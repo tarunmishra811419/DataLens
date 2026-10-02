@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import "./Landing.css";
 
 function Landing() {
@@ -6,10 +7,10 @@ function Landing() {
 
             {/* Navbar */}
             <nav className="landing-navbar">
-                <div className="brand">
+                <Link to="/" className="brand">
                     <div className="brand-logo">D</div>
                     <span>DataLens</span>
-                </div>
+                </Link>
 
                 <div className="nav-links">
                     <a href="#features">Features</a>
@@ -18,8 +19,8 @@ function Landing() {
                 </div>
 
                 <div className="nav-actions">
-                    <button className="btn btn-secondary">Log in</button>
-                    <button className="btn btn-primary">Get Started</button>
+                    <Link to="/login" className="btn btn-secondary">Log in</Link>
+                    <Link to="/register" className="btn btn-primary">Get Started</Link>
                 </div>
             </nav>
 
@@ -47,13 +48,13 @@ function Landing() {
                         </p>
 
                         <div className="hero-actions">
-                            <button className="btn btn-primary hero-button">
+                            <Link to="/dataset/create" className="btn btn-primary hero-button">
                                 Start Analyzing →
-                            </button>
+                            </Link>
 
-                            <button className="btn btn-secondary hero-button">
+                            <Link to="/dashboard" className="btn btn-secondary hero-button">
                                 Explore Demo
-                            </button>
+                            </Link>
                         </div>
 
                         <div className="hero-trust">
@@ -222,10 +223,10 @@ function Landing() {
 
             {/* Footer */}
             <footer className="landing-footer" id="about">
-                <div className="brand">
+                <Link to="/" className="brand">
                     <div className="brand-logo">D</div>
                     <span>DataLens</span>
-                </div>
+                </Link>
 
                 <p>
                     Turn your data into insights.

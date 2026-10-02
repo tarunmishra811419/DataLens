@@ -38,6 +38,8 @@
     font-size: 20px;
     font-weight: 700;
     letter-spacing: -0.5px;
+    text-decoration: none;
+    color: inherit;
 }
 
 .brand-logo {
@@ -91,6 +93,10 @@
 .btn {
     border: none;
     cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 
     padding: 11px 18px;
     border-radius: 10px;
