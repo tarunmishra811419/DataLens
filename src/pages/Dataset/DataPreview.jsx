@@ -10,12 +10,22 @@ function DataPreview() {
     const navigate = useNavigate();
 
     const file = location.state?.file;
+    const manualData = location.state?.manualData;
+    const manualColumns = location.state?.manualColumns;
+    const datasetName = location.state?.datasetName || file?.name || "Dataset Preview";
+    const isManual = Boolean(manualData && manualColumns);
 
     const [data, setData] = useState([]);
     const [columns, setColumns] = useState([]);
     const [error, setError] = useState("");
 
     useEffect(() => {
+        if (isManual) {
+            setData(manualData);
+            setColumns(manualColumns);
+            return;
+        }
+
         if (!file) {
             return;
         }
@@ -45,9 +55,9 @@ function DataPreview() {
                 setError("Unable to read the CSV file.");
             },
         });
-    }, [file]);
+    }, [file, isManual, manualData, manualColumns]);
 
-    if (!file) {
+    if (!file && !isManual) {
         return (
             <div className="preview-page">
                 <div className="preview-empty">
@@ -55,16 +65,25 @@ function DataPreview() {
                     <h1>No dataset selected</h1>
 
                     <p>
-                        Please upload a CSV file first.
+                        Please upload a CSV file or enter data manually first.
                     </p>
 
-                    <button
-                        onClick={() =>
-                            navigate("/dataset/upload")
-                        }
-                    >
-                        Upload Dataset
-                    </button>
+                    <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "16px" }}>
+                        <button
+                            onClick={() =>
+                                navigate("/dataset/manual")
+                            }
+                        >
+                            Enter Data Manually
+                        </button>
+                        <button
+                            onClick={() =>
+                                navigate("/dataset/upload")
+                            }
+                        >
+                            Upload Dataset
+                        </button>
+                    </div>
 
                 </div>
             </div>
@@ -81,9 +100,9 @@ function DataPreview() {
                 <div className="preview-header">
 
                     <div>
-                        <span>DATA PREVIEW</span>
+                        <span>DATA PREVIEW {isManual && "· MANUAL ENTRY"}</span>
 
-                        <h1>{file.name}</h1>
+                        <h1>{datasetName}</h1>
 
                         <p>
                             Preview your data before starting
@@ -94,10 +113,10 @@ function DataPreview() {
                     <button
                         className="preview-back"
                         onClick={() =>
-                            navigate("/dataset/upload")
+                            navigate(isManual ? "/dataset/manual" : "/dataset/upload")
                         }
                     >
-                        ← Change File
+                        {isManual ? "← Back to Data Entry" : "← Change File"}
                     </button>
 
                 </div>
@@ -195,6 +214,35 @@ function DataPreview() {
                                 10
                             )}{" "}
                             rows of {data.length}.
+                        </div>
+
+                        <div style={{ display: "flex", justifyContent: "flex-end", padding: "16px 0 4px" }}>
+                            <button
+                                onClick={() => navigate("/visualize", {
+                                    state: {
+                                        manualData: data,
+                                        manualColumns: columns,
+                                        datasetName: datasetName,
+                                    }
+                                })}
+                                style={{
+                                    background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+                                    border: "none",
+                                    color: "#fff",
+                                    padding: "12px 28px",
+                                    borderRadius: "10px",
+                                    fontSize: "14px",
+                                    fontWeight: "700",
+                                    cursor: "pointer",
+                                    boxShadow: "0 8px 24px rgba(99,102,241,0.35)",
+                                    transition: "all 0.2s",
+                                    fontFamily: "inherit",
+                                }}
+                                onMouseEnter={e => { e.target.style.transform = "translateY(-2px)"; e.target.style.boxShadow = "0 12px 32px rgba(99,102,241,0.5)"; }}
+                                onMouseLeave={e => { e.target.style.transform = "translateY(0)"; e.target.style.boxShadow = "0 8px 24px rgba(99,102,241,0.35)"; }}
+                            >
+                                📊 Visualize This Data →
+                            </button>
                         </div>
 
                     </div>

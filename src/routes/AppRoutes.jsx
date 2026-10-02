@@ -6,8 +6,10 @@ import ForgotPassword from "../pages/Auth/ForgotPassword";
 import Dashboard from "../pages/Dashboard/Dashboard";
 import CreateDataset from "../pages/Dataset/CreateDataset";
 import UploadDataset from "../pages/Dataset/UploadDataset";
+import ManualDataset from "../pages/Dataset/ManualDataset";
 import NotFound from "../pages/NotFound/NotFound";
 import DataPreview from "../pages/Dataset/DataPreview";
+import Visualize from "../pages/Visualize/Visualize";
 
 function AppRoutes() {
     return (
@@ -29,6 +31,16 @@ function AppRoutes() {
             />
 
             <Route
+                path="/dataset/manual"
+                element={<ManualDataset />}
+            />
+
+            <Route
+                path="/dataset/enter"
+                element={<ManualDataset />}
+            />
+
+            <Route
                 path="/dataset/upload"
                 element={<UploadDataset />}
             />
@@ -36,6 +48,11 @@ function AppRoutes() {
             <Route
                 path="/dataset/preview"
                 element={<DataPreview />}
+            />
+
+            <Route
+                path="/visualize"
+                element={<Visualize />}
             />
 
             <Route path="*" element={<NotFound />} />
