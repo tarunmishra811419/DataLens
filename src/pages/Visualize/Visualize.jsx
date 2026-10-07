@@ -54,7 +54,7 @@ const PALETTES = {
         label: "Ocean",
         colors: [
             "#0ea5e9","#06b6d4","#0891b2","#0e7490","#164e63",
-            "#38bdf8","#7dd3fc","#bae6fd","#e0f2fe","#f0f9ff",
+            "#38bdf8","#7dd3fc","#2563eb","#1d4ed8","#60a5fa",
         ],
     },
     sunset: {
@@ -71,6 +71,55 @@ const PALETTES = {
             "#65a30d","#84cc16","#bef264","#d9f99d","#15803d",
         ],
     },
+    neon: {
+        label: "Neon",
+        colors: [
+            "#f0abfc","#c084fc","#a78bfa","#818cf8","#60a5fa",
+            "#34d399","#f87171","#fb923c","#facc15","#e879f9",
+        ],
+    },
+    galaxy: {
+        label: "Galaxy",
+        colors: [
+            "#7c3aed","#6d28d9","#5b21b6","#4c1d95","#3730a3",
+            "#e879f9","#db2777","#be185d","#9333ea","#7e22ce",
+        ],
+    },
+    rose: {
+        label: "Rose",
+        colors: [
+            "#fb7185","#f43f5e","#e11d48","#be123c","#9f1239",
+            "#fda4af","#fecdd3","#ffe4e6","#f9a8d4","#f472b6",
+        ],
+    },
+    candy: {
+        label: "Candy",
+        colors: [
+            "#f472b6","#fb7185","#fbbf24","#a3e635","#34d399",
+            "#60a5fa","#c084fc","#f97316","#6ee7b7","#fde68a",
+        ],
+    },
+    arctic: {
+        label: "Arctic",
+        colors: [
+            "#bae6fd","#7dd3fc","#38bdf8","#0ea5e9","#0284c7",
+            "#e0f2fe","#f0f9ff","#cffafe","#a5f3fc","#67e8f9",
+        ],
+    },
+    earth: {
+        label: "Earth",
+        colors: [
+            "#a16207","#92400e","#78350f","#854d0e","#713f12",
+            "#ca8a04","#d97706","#b45309","#92400e","#78350f",
+        ],
+    },
+    ember: {
+        label: "Ember",
+        colors: [
+            "#ef4444","#f97316","#f59e0b","#dc2626","#b45309",
+            "#fca5a5","#fdba74","#fcd34d","#fb923c","#fbbf24",
+        ],
+    },
     mono: {
         label: "Monochrome",
         colors: [
@@ -79,6 +128,7 @@ const PALETTES = {
         ],
     },
 };
+
 
 // ── Chart Types ───────────────────────────────────────────────────────────────
 const CHART_TYPES = [
