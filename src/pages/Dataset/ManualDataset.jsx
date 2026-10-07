@@ -1,6 +1,22 @@
-import { useState, useId } from "react";
+import { useState, useId, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "./ManualDataset.css";
+
+// Helper to build default row labels for a given count
+const buildDefaultLabels = (count, startIndex = 0) =>
+    Array.from({ length: count }, (_, i) => `Row ${startIndex + i + 1}`);
+
+// Helper to build a blank dataset of n cols and m rows
+const buildBlankDataset = (numCols = 3, numRows = 5) => {
+    const cols = Array.from({ length: numCols }, (_, i) => `Column ${i + 1}`);
+    const rows = Array.from({ length: numRows }, () => {
+        const row = {};
+        cols.forEach(c => { row[c] = ""; });
+        return row;
+    });
+    const labels = buildDefaultLabels(numRows);
+    return { cols, rows, labels };
+};
 
 // Pre-configured rich sample templates for 1-click test drive
 const TEMPLATES = {
@@ -59,6 +75,9 @@ function ManualDataset() {
     const navigate = useNavigate();
     const uniqueFormId = useId();
 
+    // Mode: "template" = sample data loaded, "blank" = user's own dataset
+    const [mode, setMode] = useState("template");
+
     const [datasetName, setDatasetName] = useState("Sales Revenue Dataset");
     const [category, setCategory] = useState("General");
     const [columns, setColumns] = useState([
@@ -75,6 +94,16 @@ function ManualDataset() {
         { "Month": "March", "Region": "East", "Revenue ($)": "52400", "Units Sold": "410", "Customer Rating": "4.9" },
         { "Month": "April", "Region": "West", "Revenue ($)": "48100", "Units Sold": "360", "Customer Rating": "4.7" },
     ]);
+
+    // Editable row labels (shown in # column)
+    const [rowLabels, setRowLabels] = useState(buildDefaultLabels(4));
+    const [editingLabelIdx, setEditingLabelIdx] = useState(null);
+    const [labelDraft, setLabelDraft] = useState("");
+    const labelInputRef = useRef(null);
+
+    // Editable column names — draft while typing, commit on blur/Enter
+    const [editingColName, setEditingColName] = useState(null); // original name
+    const [colNameDraft, setColNameDraft] = useState("");
 
     // Modal state for clipboard paste
     const [showPasteModal, setShowPasteModal] = useState(false);
@@ -101,6 +130,33 @@ function ManualDataset() {
         if (values.length === 0) return "Aa";
         const allNumeric = values.every(v => !isNaN(Number(v)));
         return allNumeric ? "123" : "Aa";
+    };
+
+    // ─── Row Label Editing ───
+    const startEditingLabel = (idx) => {
+        setEditingLabelIdx(idx);
+        setLabelDraft(rowLabels[idx]);
+        setTimeout(() => labelInputRef.current?.focus(), 30);
+    };
+
+    const commitLabelEdit = () => {
+        if (editingLabelIdx === null) return;
+        const trimmed = labelDraft.trim();
+        setRowLabels(curr => {
+            const updated = [...curr];
+            updated[editingLabelIdx] = trimmed || `Row ${editingLabelIdx + 1}`;
+            return updated;
+        });
+        setEditingLabelIdx(null);
+        setLabelDraft("");
+    };
+
+    const handleLabelKeyDown = (e) => {
+        if (e.key === "Enter") commitLabelEdit();
+        if (e.key === "Escape") {
+            setEditingLabelIdx(null);
+            setLabelDraft("");
+        }
     };
 
     // Cell editing
@@ -146,9 +202,10 @@ function ManualDataset() {
         const newRow = {};
         columns.forEach(col => { newRow[col] = ""; });
         setRows(currentRows => [...currentRows, newRow]);
+        setRowLabels(curr => [...curr, `Row ${curr.length + 1}`]);
     };
 
-    // Add 5 Rows
+    // Add multiple Rows
     const addMultipleRows = (count = 5) => {
         const newBatch = [];
         for (let i = 0; i < count; i++) {
@@ -157,18 +214,20 @@ function ManualDataset() {
             newBatch.push(newRow);
         }
         setRows(currentRows => [...currentRows, ...newBatch]);
+        setRowLabels(curr => [...curr, ...buildDefaultLabels(count, curr.length)]);
     };
 
     // Delete single row
     const deleteRow = (rowIndex) => {
         if (rows.length === 1) {
-            // Keep at least one empty row instead of 0
             const empty = {};
             columns.forEach(col => { empty[col] = ""; });
             setRows([empty]);
+            setRowLabels(["Row 1"]);
             return;
         }
         setRows(currentRows => currentRows.filter((_, i) => i !== rowIndex));
+        setRowLabels(curr => curr.filter((_, i) => i !== rowIndex));
     };
 
     // Add new Column
@@ -198,10 +257,18 @@ function ManualDataset() {
         }));
     };
 
-    // Rename Column with uniqueness validation
-    const handleColumnNameChange = (oldName, newName) => {
-        const trimmed = newName.trim();
-        if (!trimmed || oldName === trimmed) return;
+    // ─── Column Name Editing (draft-based, commit on blur/Enter) ───
+    const startEditingCol = (colName) => {
+        setEditingColName(colName);
+        setColNameDraft(colName);
+    };
+
+    const commitColRename = () => {
+        const oldName = editingColName;
+        if (!oldName) return;
+        setEditingColName(null);
+        const trimmed = colNameDraft.trim();
+        if (!trimmed || trimmed === oldName) return;
 
         if (columns.some(c => c !== oldName && c.toLowerCase() === trimmed.toLowerCase())) {
             alert(`A column named "${trimmed}" already exists.`);
@@ -217,6 +284,17 @@ function ManualDataset() {
         }));
     };
 
+    const handleColNameKeyDown = (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            commitColRename();
+        }
+        if (e.key === "Escape") {
+            setEditingColName(null);
+            setColNameDraft("");
+        }
+    };
+
     // Load pre-configured sample template
     const loadTemplate = (key) => {
         const template = TEMPLATES[key];
@@ -225,6 +303,25 @@ function ManualDataset() {
         setCategory(template.category);
         setColumns(template.columns);
         setRows(template.rows.map(r => ({ ...r })));
+        setRowLabels(buildDefaultLabels(template.rows.length));
+        setMode("template");
+    };
+
+    // ─── Create Your Own Dataset (blank mode) ───
+    const handleCreateOwn = () => {
+        if (
+            rows.some(r => Object.values(r).some(v => String(v).trim() !== "")) ||
+            datasetName.trim() !== "Sales Revenue Dataset"
+        ) {
+            if (!window.confirm("Start a blank dataset? Your current data will be cleared.")) return;
+        }
+        const { cols, rows: blankRows, labels } = buildBlankDataset(3, 5);
+        setColumns(cols);
+        setRows(blankRows);
+        setRowLabels(labels);
+        setDatasetName("My Custom Dataset");
+        setCategory("General");
+        setMode("blank");
     };
 
     // Reset to clean empty grid
@@ -241,6 +338,7 @@ function ManualDataset() {
             { "Column 1": "", "Column 2": "", "Column 3": "" },
             { "Column 1": "", "Column 2": "", "Column 3": "" },
         ]);
+        setRowLabels(buildDefaultLabels(3));
         setDatasetName("New Manual Dataset");
     };
 
@@ -286,14 +384,14 @@ function ManualDataset() {
         // If only 1 line was pasted, treat it as 1 row with generic headers
         if (parsedRows.length === 0) {
             const singleRow = {};
-            uniqueHeaders.forEach((col) => {
-                singleRow[col] = "";
-            });
+            uniqueHeaders.forEach((col) => { singleRow[col] = ""; });
             setColumns(uniqueHeaders);
             setRows([singleRow]);
+            setRowLabels(["Row 1"]);
         } else {
             setColumns(uniqueHeaders);
             setRows(parsedRows);
+            setRowLabels(buildDefaultLabels(parsedRows.length));
         }
 
         setPasteRawText("");
@@ -302,9 +400,10 @@ function ManualDataset() {
 
     // Download table directly as a CSV file
     const handleExportCSV = () => {
-        const headerLine = columns.map(c => `"${c.replace(/"/g, '""')}"`).join(",");
-        const rowLines = rows.map(r =>
-            columns.map(c => `"${String(r[c] ?? "").replace(/"/g, '""')}"`).join(",")
+        const headerLine = ["Row Label", ...columns].map(c => `"${c.replace(/"/g, '""')}"`).join(",");
+        const rowLines = rows.map((r, i) =>
+            [`"${(rowLabels[i] || `Row ${i + 1}`).replace(/"/g, '""')}"`,
+            ...columns.map(c => `"${String(r[c] ?? "").replace(/"/g, '""')}"`)].join(",")
         );
         const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent([headerLine, ...rowLines].join("\n"));
         const link = document.createElement("a");
@@ -332,6 +431,7 @@ function ManualDataset() {
             state: {
                 manualData: activeRows.length > 0 ? activeRows : rows,
                 manualColumns: columns,
+                manualRowLabels: rowLabels,
                 datasetName: cleanName,
                 category,
             },
@@ -342,7 +442,6 @@ function ManualDataset() {
     const handleContinue = () => {
         const cleanName = datasetName.trim() || "Manual Dataset";
 
-        // Check if there is at least one non-empty cell
         const hasData = rows.some(r =>
             columns.some(col => String(r[col] ?? "").trim() !== "")
         );
@@ -352,15 +451,18 @@ function ManualDataset() {
             return;
         }
 
-        // Clean empty trailing rows if user left empty lines at the end
         const activeRows = rows.filter(r =>
             columns.some(col => String(r[col] ?? "").trim() !== "")
+        );
+        const activeLabels = rowLabels.filter((_, i) =>
+            columns.some(col => String(rows[i]?.[col] ?? "").trim() !== "")
         );
 
         navigate("/dataset/preview", {
             state: {
                 manualData: activeRows.length > 0 ? activeRows : rows,
                 manualColumns: columns,
+                manualRowLabels: activeLabels.length > 0 ? activeLabels : rowLabels,
                 datasetName: cleanName,
                 category: category,
             },
@@ -375,14 +477,22 @@ function ManualDataset() {
                 <header className="manual-header">
                     <div>
                         <div className="manual-badge">✦ Manual Data Entry Studio</div>
-                        <h1>Enter Dataset</h1>
+                        <h1>{mode === "blank" ? "Create Your Own Dataset" : "Enter Dataset"}</h1>
                         <p>
-                            Build your dataset directly in this spreadsheet grid, or paste rows seamlessly
-                            from Excel, Google Sheets, or raw CSV.
+                            {mode === "blank"
+                                ? "Start from scratch — define your columns, name your rows, and fill in the data exactly how you need it."
+                                : "Build your dataset directly in this spreadsheet grid, or paste rows seamlessly from Excel, Google Sheets, or raw CSV."}
                         </p>
                     </div>
 
                     <div className="manual-header-actions">
+                        <button
+                            className={`create-own-btn${mode === "blank" ? " active" : ""}`}
+                            onClick={handleCreateOwn}
+                            title="Start with a blank dataset"
+                        >
+                            ✨ Create Your Own Dataset
+                        </button>
                         <button
                             className="manual-back-btn"
                             onClick={() => navigate("/dataset/create")}
@@ -392,6 +502,23 @@ function ManualDataset() {
                         </button>
                     </div>
                 </header>
+
+                {/* ─── Blank Mode Banner ─── */}
+                {mode === "blank" && (
+                    <div className="blank-mode-banner">
+                        <span className="blank-mode-banner-icon">🧩</span>
+                        <div>
+                            <strong>Blank Dataset Mode</strong> — Click any column header to rename it. Click a row label (left column) to rename it. Add or remove rows and columns freely.
+                        </div>
+                        <button
+                            className="blank-mode-dismiss"
+                            onClick={() => loadTemplate("sales")}
+                            title="Load a sample template instead"
+                        >
+                            ↩ Load a Template Instead
+                        </button>
+                    </div>
+                )}
 
                 {/* ─── Metadata & Configuration Card ─── */}
                 <section className="dataset-meta-card">
@@ -547,9 +674,12 @@ function ManualDataset() {
                         <table className="data-entry-table">
                             <thead>
                                 <tr>
-                                    <th className="row-number-header">#</th>
+                                    <th className="row-number-header" title="Row label — click a row label to rename it">
+                                        <span className="row-label-header-text">Row</span>
+                                    </th>
                                     {columns.map((col) => {
                                         const typeIcon = getColumnTypeIcon(col);
+                                        const isEditing = editingColName === col;
                                         return (
                                             <th key={col}>
                                                 <div className="column-header-container">
@@ -559,8 +689,11 @@ function ManualDataset() {
                                                     <input
                                                         type="text"
                                                         className="column-title-input"
-                                                        value={col}
-                                                        onChange={(e) => handleColumnNameChange(col, e.target.value)}
+                                                        value={isEditing ? colNameDraft : col}
+                                                        onFocus={() => startEditingCol(col)}
+                                                        onChange={(e) => setColNameDraft(e.target.value)}
+                                                        onBlur={commitColRename}
+                                                        onKeyDown={handleColNameKeyDown}
                                                         title="Click to rename column"
                                                     />
                                                     {columns.length > 1 && (
@@ -583,7 +716,33 @@ function ManualDataset() {
                             <tbody>
                                 {rows.map((row, rowIndex) => (
                                     <tr key={rowIndex}>
-                                        <td className="row-number-cell">{rowIndex + 1}</td>
+                                        {/* ─── Editable Row Label ─── */}
+                                        <td className="row-number-cell">
+                                            {editingLabelIdx === rowIndex ? (
+                                                <input
+                                                    ref={labelInputRef}
+                                                    className="row-label-edit-input"
+                                                    type="text"
+                                                    value={labelDraft}
+                                                    onChange={(e) => setLabelDraft(e.target.value)}
+                                                    onBlur={commitLabelEdit}
+                                                    onKeyDown={handleLabelKeyDown}
+                                                    placeholder={`Row ${rowIndex + 1}`}
+                                                />
+                                            ) : (
+                                                <button
+                                                    className="row-label-display"
+                                                    onClick={() => startEditingLabel(rowIndex)}
+                                                    title="Click to rename this row"
+                                                >
+                                                    <span className="row-label-text">
+                                                        {rowLabels[rowIndex] || `Row ${rowIndex + 1}`}
+                                                    </span>
+                                                    <span className="row-label-edit-icon">✎</span>
+                                                </button>
+                                            )}
+                                        </td>
+
                                         {columns.map((col, colIndex) => (
                                             <td key={col}>
                                                 <input
@@ -601,7 +760,7 @@ function ManualDataset() {
                                             <button
                                                 className="row-delete-btn"
                                                 onClick={() => deleteRow(rowIndex)}
-                                                title={`Delete row #${rowIndex + 1}`}
+                                                title={`Delete row "${rowLabels[rowIndex] || `Row ${rowIndex + 1}`}"`}
                                             >
                                                 🗑
                                             </button>
