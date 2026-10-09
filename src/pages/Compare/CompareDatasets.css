@@ -1,0 +1,313 @@
+/* ═══════════════════════════════════════════════
+   DataLens — Compare Datasets Styles
+   ═══════════════════════════════════════════════ */
+
+.compare-page {
+    min-height: 100vh;
+    background: #090d16;
+    color: #f1f5f9;
+    font-family: 'Inter', -apple-system, sans-serif;
+    padding-bottom: 60px;
+}
+
+.compare-container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 24px 28px;
+}
+
+/* Header */
+.compare-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.compare-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.compare-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.compare-back-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    transform: translateX(-2px);
+}
+
+.compare-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #818cf8;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-bottom: 6px;
+}
+
+.compare-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0;
+}
+
+.compare-subtitle {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-top: 4px;
+}
+
+/* Selectors row */
+.compare-selectors-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 20px;
+    align-items: center;
+    margin-bottom: 28px;
+}
+
+.compare-card-selector {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 16px;
+    padding: 20px;
+    backdrop-filter: blur(12px);
+    transition: border-color 0.2s;
+}
+
+.compare-card-selector:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+}
+
+.compare-card-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.compare-card-label.label-a {
+    color: #818cf8;
+}
+
+.compare-card-label.label-b {
+    color: #34d399;
+}
+
+.compare-select {
+    width: 100%;
+    padding: 11px 14px;
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    color: #f1f5f9;
+    font-size: 14px;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+}
+
+.compare-select:focus {
+    border-color: #6366f1;
+}
+
+.compare-vs-pill {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #10b981);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 13px;
+    color: #ffffff;
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.35);
+}
+
+/* Key Metrics Comparison Cards */
+.compare-metrics-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.compare-metric-box {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 18px 20px;
+    backdrop-filter: blur(10px);
+}
+
+.compare-metric-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-bottom: 10px;
+}
+
+.compare-metric-values {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+}
+
+.val-a {
+    font-size: 20px;
+    font-weight: 700;
+    color: #818cf8;
+}
+
+.val-b {
+    font-size: 20px;
+    font-weight: 700;
+    color: #34d399;
+}
+
+.compare-delta-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.delta-positive {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+}
+
+.delta-negative {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+
+.delta-neutral {
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+}
+
+/* Chart Panel */
+.compare-chart-panel {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 24px;
+    margin-bottom: 28px;
+    backdrop-filter: blur(12px);
+}
+
+.compare-chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.compare-chart-header h3 {
+    font-size: 17px;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+}
+
+.compare-chart-container {
+    height: 340px;
+    position: relative;
+}
+
+/* Insight Cards Section */
+.compare-insights-panel {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 24px;
+}
+
+.compare-insights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.compare-insight-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+.compare-insight-card.highlight {
+    border-color: rgba(99, 102, 241, 0.35);
+    background: rgba(99, 102, 241, 0.06);
+}
+
+.compare-insight-icon {
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.compare-insight-text h4 {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #f1f5f9;
+}
+
+.compare-insight-text p {
+    margin: 0;
+    font-size: 13px;
+    color: #94a3b8;
+    line-height: 1.45;
+}
+
+@media (max-width: 768px) {
+    .compare-selectors-grid {
+        grid-template-columns: 1fr;
+    }
+    .compare-vs-pill {
+        margin: 0 auto;
+    }
+}
