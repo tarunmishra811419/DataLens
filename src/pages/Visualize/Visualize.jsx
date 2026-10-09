@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
     Chart as ChartJS,
@@ -156,7 +156,7 @@ function hexToRgba(hex, alpha) {
     return `rgba(${r},${g},${b},${alpha})`;
 }
 
-function buildChartData(chartType, data, columns, xAxis, yAxes, palette, chartTitle) {
+function buildChartData(chartType, data, columns, xAxis, yAxes, palette) {
     const colors = PALETTES[palette]?.colors ?? PALETTES.vivid.colors;
 
     if (chartType === "scatter") {
@@ -228,7 +228,7 @@ function buildChartData(chartType, data, columns, xAxis, yAxes, palette, chartTi
     return { labels, datasets };
 }
 
-function buildChartOptions(chartType, chartTitle, showGrid, showLegend, showValues) {
+function buildChartOptions(chartType, chartTitle, showGrid, showLegend) {
     const isHorizontal = chartType === "hbar";
     const isPolar = chartType === "pie" || chartType === "doughnut" || chartType === "polar" || chartType === "radar";
 
@@ -327,19 +327,19 @@ export default function Visualize() {
     // Derived chart data
     const safeYAxes = yAxes.filter(Boolean);
     const chartData = rawData.length > 0
-        ? buildChartData(chartType, data, columns, xAxis, safeYAxes, palette, chartTitle)
+        ? buildChartData(chartType, data, columns, xAxis, safeYAxes, palette)
         : { labels: [], datasets: [] };
-    const chartOptions = buildChartOptions(chartType, chartTitle, showGrid, showLegend, false);
+    const chartOptions = buildChartOptions(chartType, chartTitle, showGrid, showLegend);
 
     // Sync x/y when switching chart types
-    useEffect(() => {
-        if (chartType === "scatter") {
+    const handleChartTypeChange = (newType) => {
+        setChartType(newType);
+        if (newType === "scatter") {
             setYAxes(numericCols.slice(0, 2));
-        } else if (chartType === "pie" || chartType === "doughnut" || chartType === "polar" || chartType === "radar") {
+        } else if (newType === "pie" || newType === "doughnut" || newType === "polar" || newType === "radar") {
             if (safeYAxes.length > 1) setYAxes([safeYAxes[0]]);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [chartType]);
+    };
 
     const toggleYAxis = (col) => {
         const isScatterOrSingle = ["scatter","pie","doughnut","polar","radar"].includes(chartType);
@@ -496,7 +496,7 @@ export default function Visualize() {
                                     <button
                                         key={ct.id}
                                         className={`viz-type-card ${chartType === ct.id ? "selected" : ""}`}
-                                        onClick={() => setChartType(ct.id)}
+                                        onClick={() => handleChartTypeChange(ct.id)}
                                         title={ct.desc}
                                     >
                                         <span className="viz-type-icon">{ct.icon}</span>

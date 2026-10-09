@@ -362,7 +362,7 @@ function ManualDataset() {
 
         // Ensure unique header names
         const uniqueHeaders = [];
-        parsedHeaders.forEach((h, idx) => {
+        parsedHeaders.forEach((h) => {
             let uniqueName = h;
             let counter = 1;
             while (uniqueHeaders.includes(uniqueName)) {

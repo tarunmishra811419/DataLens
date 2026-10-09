@@ -11,7 +11,6 @@ import {
     findHighest,
     findLowest,
     detectAnomalies,
-    calcMonthOverMonth,
     linearRegression,
     estimateTimeToGoal,
     calcStreak,
@@ -217,23 +216,24 @@ export function generatePeriodInsights(period1Values, period2Values, period1Labe
 export function generateStreakInsights(dates, userName) {
     const insights = [];
     const { current, longest } = calcStreak(dates);
+    const greeting = userName ? `${userName}, ` : "";
 
     if (current >= 7) {
         insights.push(createInsight(
             INSIGHT_TYPES.STREAK,
-            `${current}-day streak! ${current >= 30 ? "You're on fire — legendary consistency!" : "Keep it going!"}`,
+            `${greeting}${current}-day streak! ${current >= 30 ? "You're on fire — legendary consistency!" : "Keep it going!"}`,
             current >= 30 ? 9 : 7
         ));
     } else if (current >= 3) {
         insights.push(createInsight(
             INSIGHT_TYPES.STREAK,
-            `${current}-day streak — building a great habit!`,
+            `${greeting}${current}-day streak — building a great habit!`,
             5
         ));
     } else if (current === 0 && longest > 0) {
         insights.push(createInsight(
             INSIGHT_TYPES.STREAK,
-            `Your streak ended. Your best was ${longest} days — let's beat that!`,
+            `${userName ? `${userName}, your` : "Your"} streak ended. Your best was ${longest} days — let's beat that!`,
             6
         ));
     }
@@ -385,13 +385,13 @@ function analyzeAnomalies(values, labels, name) {
         if (a.type === "spike") {
             return createInsight(
                 INSIGHT_TYPES.ANOMALY_SPIKE,
-                `Unusual spike detected in ${label} — value was ${Math.abs(a.deviation)}% above average.`,
+                `Unusual spike detected in ${name} (${label}) — value was ${Math.abs(a.deviation)}% above average.`,
                 8
             );
         } else {
             return createInsight(
                 INSIGHT_TYPES.ANOMALY_DROP,
-                `Sudden drop detected in ${label} — value was ${Math.abs(a.deviation)}% below average.`,
+                `Sudden drop detected in ${name} (${label}) — value was ${Math.abs(a.deviation)}% below average.`,
                 8
             );
         }

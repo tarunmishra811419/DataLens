@@ -10,6 +10,8 @@ import ManualDataset from "../pages/Dataset/ManualDataset";
 import NotFound from "../pages/NotFound/NotFound";
 import DataPreview from "../pages/Dataset/DataPreview";
 import Visualize from "../pages/Visualize/Visualize";
+import CompareDatasets from "../pages/Compare/CompareDatasets";
+import Profile from "../pages/Profile/Profile";
 
 function AppRoutes() {
     return (
@@ -54,6 +56,9 @@ function AppRoutes() {
                 path="/visualize"
                 element={<Visualize />}
             />
+
+            <Route path="/compare" element={<CompareDatasets />} />
+            <Route path="/profile" element={<Profile />} />
 
             <Route path="*" element={<NotFound />} />
         </Routes>

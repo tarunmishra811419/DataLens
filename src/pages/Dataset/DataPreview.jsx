@@ -15,18 +15,12 @@ function DataPreview() {
     const datasetName = location.state?.datasetName || file?.name || "Dataset Preview";
     const isManual = Boolean(manualData && manualColumns);
 
-    const [data, setData] = useState([]);
-    const [columns, setColumns] = useState([]);
+    const [data, setData] = useState(() => (isManual ? (manualData || []) : []));
+    const [columns, setColumns] = useState(() => (isManual ? (manualColumns || []) : []));
     const [error, setError] = useState("");
 
     useEffect(() => {
-        if (isManual) {
-            setData(manualData);
-            setColumns(manualColumns);
-            return;
-        }
-
-        if (!file) {
+        if (isManual || !file) {
             return;
         }
 

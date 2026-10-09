@@ -329,9 +329,7 @@ export function calcStreak(dates) {
     mostRecent.setHours(0, 0, 0, 0);
     const daysDiff = Math.floor((today - mostRecent) / (1000 * 60 * 60 * 24));
 
-    if (daysDiff > 1) {
-        currentStreak = 0;
-    } else {
+    if (daysDiff <= 1) {
         currentStreak = 1;
         for (let i = 1; i < sortedDates.length; i++) {
             const prev = new Date(sortedDates[i - 1]);

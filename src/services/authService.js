@@ -108,6 +108,62 @@ export async function loginUser(email, password, rememberMe = true) {
 }
 
 /**
+ * Register a new user.
+ * Attempts backend connection first, falls back to demo session if offline.
+ */
+export async function registerUser(name, email, password) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password }),
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Failed to create account");
+        }
+
+        const user = { _id: data._id, name: data.name, email: data.email };
+        setAuthSession(user, data.token, true);
+        return { success: true, user, token: data.token, isDemo: false };
+    } catch (err) {
+        clearTimeout(timeoutId);
+
+        const isNetworkError =
+            err.name === "AbortError" ||
+            err.message.includes("Failed to fetch") ||
+            err.message.includes("NetworkError");
+
+        if (isNetworkError) {
+            const demoUser = {
+                _id: "demo-" + Date.now(),
+                name: name.trim() || "Data Analyst",
+                email: email,
+            };
+            const demoToken = "demo-jwt-" + Math.random().toString(36).substring(2);
+            setAuthSession(demoUser, demoToken, true);
+
+            return {
+                success: true,
+                user: demoUser,
+                token: demoToken,
+                isDemo: true,
+                notice: "Account created in Local Workspace Mode (Backend offline)",
+            };
+        }
+
+        throw err;
+    }
+}
+
+/**
  * Send password reset request.
  */
 export async function requestPasswordReset(email) {

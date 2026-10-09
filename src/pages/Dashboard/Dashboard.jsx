@@ -1,6 +1,26 @@
+import { Link, useNavigate } from "react-router-dom";
+import { getAuthSession, clearAuthSession } from "../../services/authService";
 import "./Dashboard.css";
 
 function Dashboard() {
+    const navigate = useNavigate();
+    const session = getAuthSession();
+    const userName = session?.user?.name || "Tarun";
+
+    const handleLogout = () => {
+        clearAuthSession();
+        navigate("/login");
+    };
+
+    const handleOpenSampleDataset = (name, category) => {
+        navigate("/dataset/manual", {
+            state: {
+                datasetName: name,
+                category: category || "Business",
+            },
+        });
+    };
+
     return (
         <div className="dashboard-page">
 
@@ -14,34 +34,40 @@ function Dashboard() {
 
                 <nav className="dashboard-nav">
 
-                    <a href="/dashboard" className="nav-item active">
+                    <Link to="/dashboard" className="nav-item active">
                         <span>⌂</span>
                         Dashboard
-                    </a>
+                    </Link>
 
-                    <a href="/dataset/create" className="nav-item">
+                    <Link to="/dataset/create" className="nav-item">
                         <span>＋</span>
                         Datasets
-                    </a>
+                    </Link>
 
-                    <a href="/compare" className="nav-item">
+                    <Link to="/compare" className="nav-item">
                         <span>⇄</span>
                         Compare
-                    </a>
+                    </Link>
 
-                    <a href="/profile" className="nav-item">
+                    <Link to="/profile" className="nav-item">
                         <span>◎</span>
                         Profile
-                    </a>
+                    </Link>
 
                 </nav>
 
                 <div className="sidebar-bottom">
-                    <button className="sidebar-settings">
+                    <button
+                        className="sidebar-settings"
+                        onClick={() => navigate("/profile")}
+                    >
                         ⚙ Settings
                     </button>
 
-                    <button className="sidebar-logout">
+                    <button
+                        className="sidebar-logout"
+                        onClick={handleLogout}
+                    >
                         ↪ Logout
                     </button>
                 </div>
@@ -62,16 +88,16 @@ function Dashboard() {
                         <h1>Dashboard</h1>
                     </div>
 
-                    <div className="dashboard-user">
+                    <Link to="/profile" className="dashboard-user" style={{ textDecoration: "none", color: "inherit" }}>
                         <div className="user-avatar">
-                            T
+                            {userName.charAt(0).toUpperCase()}
                         </div>
 
                         <div>
-                            <strong>Tarun</strong>
+                            <strong>{userName}</strong>
                             <span>Data Analyst</span>
                         </div>
-                    </div>
+                    </Link>
 
                 </header>
 
@@ -92,12 +118,12 @@ function Dashboard() {
                         </p>
                     </div>
 
-                    <a
-                        href="/dataset/create"
+                    <Link
+                        to="/dataset/create"
                         className="dashboard-primary-button"
                     >
                         + Add Dataset
-                    </a>
+                    </Link>
 
                 </section>
 
@@ -202,14 +228,18 @@ function Dashboard() {
                                 <h3>Recent datasets</h3>
                             </div>
 
-                            <a href="/dataset/create">
+                            <Link to="/dataset/create">
                                 View all
-                            </a>
+                            </Link>
                         </div>
 
                         <div className="dataset-list">
 
-                            <div className="dataset-item">
+                            <div
+                                className="dataset-item"
+                                style={{ cursor: "pointer" }}
+                                onClick={() => handleOpenSampleDataset("Sales Performance", "Finance")}
+                            >
                                 <div className="dataset-icon">📊</div>
 
                                 <div>
@@ -220,7 +250,11 @@ function Dashboard() {
                                 <b>→</b>
                             </div>
 
-                            <div className="dataset-item">
+                            <div
+                                className="dataset-item"
+                                style={{ cursor: "pointer" }}
+                                onClick={() => handleOpenSampleDataset("Monthly Revenue", "Finance")}
+                            >
                                 <div className="dataset-icon">📈</div>
 
                                 <div>
@@ -231,7 +265,11 @@ function Dashboard() {
                                 <b>→</b>
                             </div>
 
-                            <div className="dataset-item">
+                            <div
+                                className="dataset-item"
+                                style={{ cursor: "pointer" }}
+                                onClick={() => handleOpenSampleDataset("Customer Growth", "Business")}
+                            >
                                 <div className="dataset-icon">👥</div>
 
                                 <div>
@@ -242,7 +280,11 @@ function Dashboard() {
                                 <b>→</b>
                             </div>
 
-                            <div className="dataset-item">
+                            <div
+                                className="dataset-item"
+                                style={{ cursor: "pointer" }}
+                                onClick={() => handleOpenSampleDataset("Expense Analysis", "Finance")}
+                            >
                                 <div className="dataset-icon">💰</div>
 
                                 <div>
