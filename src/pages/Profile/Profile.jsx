@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getAuthSession, clearAuthSession } from "../../services/authService";
+import { getSavedDatasets, deleteSavedDataset, getDatasetStats } from "../../services/datasetService";
 import "./Profile.css";
 
 export default function Profile() {
@@ -14,6 +15,62 @@ export default function Profile() {
     const [notifications, setNotifications] = useState(true);
     const [autoSave, setAutoSave] = useState(true);
     const [highContrast, setHighContrast] = useState(false);
+
+    // Saved Datasets state
+    const [datasets, setDatasets] = useState(() => getSavedDatasets());
+    const [stats, setStats] = useState(() => getDatasetStats());
+    const [filterCategory, setFilterCategory] = useState("All");
+
+    useEffect(() => {
+        const handleDatasetsUpdated = () => {
+            setDatasets(getSavedDatasets());
+            setStats(getDatasetStats());
+        };
+        window.addEventListener("datalens_datasets_updated", handleDatasetsUpdated);
+        return () => {
+            window.removeEventListener("datalens_datasets_updated", handleDatasetsUpdated);
+        };
+    }, []);
+
+    const categories = ["All", ...Array.from(new Set(datasets.map((d) => d.category || "General").filter(Boolean)))];
+
+    const filteredDatasets = filterCategory === "All"
+        ? datasets
+        : datasets.filter((d) => (d.category || "General") === filterCategory);
+
+    const handleEditDataset = (dataset) => {
+        navigate("/dataset/manual", { state: { editDataset: dataset } });
+    };
+
+    const handleVisualizeDataset = (dataset) => {
+        navigate("/visualize", {
+            state: {
+                manualData: dataset.rows,
+                manualColumns: dataset.columns,
+                manualRowLabels: dataset.rowLabels,
+                datasetName: dataset.name,
+                category: dataset.category,
+            },
+        });
+    };
+
+    const handleDeleteDataset = async (id, name) => {
+        if (window.confirm(`Are you sure you want to delete dataset "${name}"?`)) {
+            await deleteSavedDataset(id);
+            setDatasets(getSavedDatasets());
+            setStats(getDatasetStats());
+        }
+    };
+
+    const formatDate = (isoString) => {
+        if (!isoString) return "Recently";
+        try {
+            const d = new Date(isoString);
+            return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        } catch {
+            return "Recently";
+        }
+    };
 
     const handleLogout = () => {
         clearAuthSession();
@@ -54,11 +111,11 @@ export default function Profile() {
                 <section className="profile-stats-grid">
                     <div className="profile-stat-box">
                         <span>Managed Datasets</span>
-                        <strong>12</strong>
+                        <strong>{stats.totalDatasets}</strong>
                     </div>
                     <div className="profile-stat-box">
                         <span>Analyzed Rows</span>
-                        <strong>34,820</strong>
+                        <strong>{stats.totalRows.toLocaleString()}</strong>
                     </div>
                     <div className="profile-stat-box">
                         <span>Visualizations Exported</span>
@@ -68,6 +125,124 @@ export default function Profile() {
                         <span>Active Streak</span>
                         <strong style={{ color: "#34d399" }}>14 Days 🔥</strong>
                     </div>
+                </section>
+
+                {/* ─── My Saved Datasets Section ─── */}
+                <section className="profile-datasets-section">
+                    <div className="profile-datasets-header">
+                        <div className="profile-datasets-title-wrap">
+                            <h2 className="profile-datasets-title">📁 My Saved Datasets</h2>
+                            <span className="profile-count-pill">{datasets.length} Total</span>
+                        </div>
+                        <button
+                            type="button"
+                            className="profile-create-dataset-btn"
+                            onClick={() => navigate("/dataset/manual")}
+                        >
+                            + Create New Dataset
+                        </button>
+                    </div>
+
+                    {/* Category Filter Chips */}
+                    {categories.length > 1 && (
+                        <div className="profile-filter-row">
+                            {categories.map((cat) => (
+                                <button
+                                    key={cat}
+                                    type="button"
+                                    className={`profile-filter-chip${filterCategory === cat ? " active" : ""}`}
+                                    onClick={() => setFilterCategory(cat)}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Datasets Grid or Empty State */}
+                    {filteredDatasets.length === 0 ? (
+                        <div className="profile-empty-datasets">
+                            <div className="profile-empty-datasets-icon">📊</div>
+                            <h4>No datasets found</h4>
+                            <p>
+                                {datasets.length === 0
+                                    ? "You haven't saved any datasets yet. Create one manually or import spreadsheet rows to build your collection."
+                                    : `No datasets found matching category "${filterCategory}".`}
+                            </p>
+                            <button
+                                type="button"
+                                className="profile-create-dataset-btn"
+                                onClick={() => navigate("/dataset/manual")}
+                            >
+                                + Create First Dataset
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="profile-datasets-grid">
+                            {filteredDatasets.map((ds) => {
+                                const rowCount = Array.isArray(ds.rows) ? ds.rows.length : 0;
+                                const colCount = Array.isArray(ds.columns) ? ds.columns.length : 0;
+                                const dsId = ds.id || ds._id;
+                                return (
+                                    <div key={dsId} className="saved-dataset-card">
+                                        <div className="dataset-card-top">
+                                            <div className="dataset-card-info">
+                                                <h3 className="dataset-card-name">{ds.name}</h3>
+                                                <span className="dataset-category-tag">{ds.category || "General"}</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="dataset-delete-icon-btn"
+                                                onClick={() => handleDeleteDataset(dsId, ds.name)}
+                                                title="Delete dataset"
+                                            >
+                                                🗑
+                                            </button>
+                                        </div>
+
+                                        <div className="dataset-card-metrics">
+                                            <div className="dataset-card-metric-item">
+                                                <span>Rows:</span>
+                                                <strong>{rowCount}</strong>
+                                            </div>
+                                            <div className="dataset-card-metric-item">
+                                                <span>Cols:</span>
+                                                <strong>{colCount}</strong>
+                                            </div>
+                                            <div className="dataset-card-metric-item">
+                                                <span>Cells:</span>
+                                                <strong>{rowCount * colCount}</strong>
+                                            </div>
+                                        </div>
+
+                                        <div className="dataset-card-footer">
+                                            <span className="dataset-date-text">
+                                                Updated {formatDate(ds.updatedAt || ds.createdAt)}
+                                            </span>
+                                            <div className="dataset-action-buttons">
+                                                <button
+                                                    type="button"
+                                                    className="dataset-btn-edit"
+                                                    onClick={() => handleEditDataset(ds)}
+                                                    title="Edit in spreadsheet editor"
+                                                >
+                                                    ✏ Edit
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="dataset-btn-viz"
+                                                    onClick={() => handleVisualizeDataset(ds)}
+                                                    title="Visualize charts"
+                                                >
+                                                    📊 Visualize
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </section>
 
                 {/* Workspace Preferences */}

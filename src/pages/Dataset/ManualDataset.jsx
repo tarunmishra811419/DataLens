@@ -1,5 +1,6 @@
 import { useState, useId, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { saveDataset } from "../../services/datasetService";
 import "./ManualDataset.css";
 
 // Helper to build default row labels for a given count
@@ -73,30 +74,48 @@ const TEMPLATES = {
 
 function ManualDataset() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const editTarget = location.state?.editDataset;
     const uniqueFormId = useId();
 
-    // Mode: "template" = sample data loaded, "blank" = user's own dataset
-    const [mode, setMode] = useState("template");
+    // Mode: "template" = sample data loaded, "blank" = user's own dataset, "edit" = editing saved dataset
+    const [mode, setMode] = useState(() => (editTarget ? "edit" : "template"));
+    const [datasetId, setDatasetId] = useState(() => editTarget?.id || editTarget?._id || null);
+    const [isSaved, setIsSaved] = useState(() => !!editTarget);
+    const [isSaving, setIsSaving] = useState(false);
+    const [savedToastAction, setSavedToastAction] = useState(false);
 
-    const [datasetName, setDatasetName] = useState("Sales Revenue Dataset");
-    const [category, setCategory] = useState("General");
-    const [columns, setColumns] = useState([
-        "Month",
-        "Region",
-        "Revenue ($)",
-        "Units Sold",
-        "Customer Rating"
-    ]);
+    const [datasetName, setDatasetName] = useState(() => editTarget?.name || "Sales Revenue Dataset");
+    const [category, setCategory] = useState(() => editTarget?.category || "General");
+    const [columns, setColumns] = useState(() => {
+        if (editTarget?.columns && editTarget.columns.length > 0) return editTarget.columns;
+        return [
+            "Month",
+            "Region",
+            "Revenue ($)",
+            "Units Sold",
+            "Customer Rating"
+        ];
+    });
 
-    const [rows, setRows] = useState([
-        { "Month": "January", "Region": "North", "Revenue ($)": "45200", "Units Sold": "320", "Customer Rating": "4.8" },
-        { "Month": "February", "Region": "South", "Revenue ($)": "38900", "Units Sold": "285", "Customer Rating": "4.6" },
-        { "Month": "March", "Region": "East", "Revenue ($)": "52400", "Units Sold": "410", "Customer Rating": "4.9" },
-        { "Month": "April", "Region": "West", "Revenue ($)": "48100", "Units Sold": "360", "Customer Rating": "4.7" },
-    ]);
+    const [rows, setRows] = useState(() => {
+        if (editTarget?.rows && editTarget.rows.length > 0) return editTarget.rows.map(r => ({ ...r }));
+        return [
+            { "Month": "January", "Region": "North", "Revenue ($)": "45200", "Units Sold": "320", "Customer Rating": "4.8" },
+            { "Month": "February", "Region": "South", "Revenue ($)": "38900", "Units Sold": "285", "Customer Rating": "4.6" },
+            { "Month": "March", "Region": "East", "Revenue ($)": "52400", "Units Sold": "410", "Customer Rating": "4.9" },
+            { "Month": "April", "Region": "West", "Revenue ($)": "48100", "Units Sold": "360", "Customer Rating": "4.7" },
+        ];
+    });
 
     // Editable row labels (shown in # column)
-    const [rowLabels, setRowLabels] = useState(buildDefaultLabels(4));
+    const [rowLabels, setRowLabels] = useState(() => {
+        if (editTarget?.rowLabels && editTarget.rowLabels.length === (editTarget.rows?.length || 0)) {
+            return editTarget.rowLabels;
+        }
+        const len = editTarget?.rows?.length || 4;
+        return buildDefaultLabels(len);
+    });
     const [editingLabelIdx, setEditingLabelIdx] = useState(null);
     const [labelDraft, setLabelDraft] = useState("");
     const labelInputRef = useRef(null);
@@ -108,6 +127,21 @@ function ManualDataset() {
     // Modal state for clipboard paste
     const [showPasteModal, setShowPasteModal] = useState(false);
     const [pasteRawText, setPasteRawText] = useState("");
+
+    // Undo snapshot for single-click Clear Dataset & toast notification
+    const [undoSnapshot, setUndoSnapshot] = useState(null);
+    const [toastMessage, setToastMessage] = useState("");
+    const toastTimerRef = useRef(null);
+
+    const showToast = (msg) => {
+        setToastMessage(msg);
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = setTimeout(() => {
+            setToastMessage("");
+        }, 5500);
+    };
+
+
 
     // Calculate real-time stats
     const totalCells = rows.length * columns.length;
@@ -149,6 +183,7 @@ function ManualDataset() {
         });
         setEditingLabelIdx(null);
         setLabelDraft("");
+        setIsSaved(false);
     };
 
     const handleLabelKeyDown = (e) => {
@@ -169,6 +204,7 @@ function ManualDataset() {
             };
             return updated;
         });
+        setIsSaved(false);
     };
 
     // Keyboard navigation helper
@@ -199,35 +235,47 @@ function ManualDataset() {
 
     // Add 1 Row
     const addRow = () => {
+        let currentCols = columns;
+        if (currentCols.length === 0) {
+            currentCols = ["Column 1"];
+            setColumns(currentCols);
+        }
         const newRow = {};
-        columns.forEach(col => { newRow[col] = ""; });
+        currentCols.forEach(col => { newRow[col] = ""; });
         setRows(currentRows => [...currentRows, newRow]);
         setRowLabels(curr => [...curr, `Row ${curr.length + 1}`]);
+        setIsSaved(false);
     };
 
     // Add multiple Rows
     const addMultipleRows = (count = 5) => {
+        let currentCols = columns;
+        if (currentCols.length === 0) {
+            currentCols = ["Column 1"];
+            setColumns(currentCols);
+        }
         const newBatch = [];
         for (let i = 0; i < count; i++) {
             const newRow = {};
-            columns.forEach(col => { newRow[col] = ""; });
+            currentCols.forEach(col => { newRow[col] = ""; });
             newBatch.push(newRow);
         }
         setRows(currentRows => [...currentRows, ...newBatch]);
         setRowLabels(curr => [...curr, ...buildDefaultLabels(count, curr.length)]);
+        setIsSaved(false);
     };
 
     // Delete single row
     const deleteRow = (rowIndex) => {
-        if (rows.length === 1) {
-            const empty = {};
-            columns.forEach(col => { empty[col] = ""; });
-            setRows([empty]);
-            setRowLabels(["Row 1"]);
+        if (rows.length <= 1) {
+            setRows([]);
+            setRowLabels([]);
+            setIsSaved(false);
             return;
         }
         setRows(currentRows => currentRows.filter((_, i) => i !== rowIndex));
         setRowLabels(curr => curr.filter((_, i) => i !== rowIndex));
+        setIsSaved(false);
     };
 
     // Add new Column
@@ -240,21 +288,25 @@ function ManualDataset() {
         }
 
         setColumns(curr => [...curr, baseName]);
-        setRows(curr => curr.map(r => ({ ...r, [baseName]: "" })));
+        setRows(curr => {
+            if (curr.length === 0) {
+                return [{ [baseName]: "" }];
+            }
+            return curr.map(r => ({ ...r, [baseName]: "" }));
+        });
+        setRowLabels(curr => (curr.length === 0 ? ["Row 1"] : curr));
+        setIsSaved(false);
     };
 
     // Delete Column
     const deleteColumn = (colToDelete) => {
-        if (columns.length <= 1) {
-            alert("A dataset must have at least one column.");
-            return;
-        }
         setColumns(curr => curr.filter(c => c !== colToDelete));
         setRows(curr => curr.map(r => {
             const copy = { ...r };
             delete copy[colToDelete];
             return copy;
         }));
+        setIsSaved(false);
     };
 
     // ─── Column Name Editing (draft-based, commit on blur/Enter) ───
@@ -282,6 +334,7 @@ function ManualDataset() {
             delete updated[oldName];
             return updated;
         }));
+        setIsSaved(false);
     };
 
     const handleColNameKeyDown = (e) => {
@@ -305,6 +358,8 @@ function ManualDataset() {
         setRows(template.rows.map(r => ({ ...r })));
         setRowLabels(buildDefaultLabels(template.rows.length));
         setMode("template");
+        setDatasetId(null);
+        setIsSaved(false);
     };
 
     // ─── Create Your Own Dataset (blank mode) ───
@@ -322,15 +377,49 @@ function ManualDataset() {
         setDatasetName("My Custom Dataset");
         setCategory("General");
         setMode("blank");
+        setDatasetId(null);
+        setIsSaved(false);
     };
 
-    // Reset to clean empty grid
-    const handleClearAll = () => {
-        if (rows.some(r => Object.values(r).some(v => String(v).trim() !== ""))) {
-            if (!window.confirm("Clear all data in this table? This cannot be undone.")) {
-                return;
-            }
+    // ─── Clear Dataset (Single Click) ───
+    const handleClearDataset = () => {
+        if (rows.length === 0 && columns.length === 0) {
+            showToast("Dataset is already empty.");
+            return;
         }
+
+        // Save current state for instant undo
+        setUndoSnapshot({
+            rows: [...rows],
+            columns: [...columns],
+            rowLabels: [...rowLabels],
+            datasetName,
+            category,
+        });
+
+        // Clear all rows and columns immediately in a single click
+        setRows([]);
+        setColumns([]);
+        setRowLabels([]);
+        setIsSaved(false);
+        setSavedToastAction(false);
+
+        showToast("Dataset cleared: All rows and columns have been removed.");
+    };
+
+    const handleUndoClear = () => {
+        if (!undoSnapshot) return;
+        setRows(undoSnapshot.rows);
+        setColumns(undoSnapshot.columns);
+        setRowLabels(undoSnapshot.rowLabels);
+        if (undoSnapshot.datasetName) setDatasetName(undoSnapshot.datasetName);
+        if (undoSnapshot.category) setCategory(undoSnapshot.category);
+        setUndoSnapshot(null);
+        setToastMessage("");
+        setIsSaved(false);
+    };
+
+    const handleResetBlankGrid = () => {
         const defaultCols = ["Column 1", "Column 2", "Column 3"];
         setColumns(defaultCols);
         setRows([
@@ -339,7 +428,7 @@ function ManualDataset() {
             { "Column 1": "", "Column 2": "", "Column 3": "" },
         ]);
         setRowLabels(buildDefaultLabels(3));
-        setDatasetName("New Manual Dataset");
+        setIsSaved(false);
     };
 
     // Parse and apply pasted data (TSV from Excel/Sheets or CSV)
@@ -396,10 +485,15 @@ function ManualDataset() {
 
         setPasteRawText("");
         setShowPasteModal(false);
+        setIsSaved(false);
     };
 
     // Download table directly as a CSV file
     const handleExportCSV = () => {
+        if (columns.length === 0 || rows.length === 0) {
+            alert("No data available to export. Please add columns and rows first.");
+            return;
+        }
         const headerLine = ["Row Label", ...columns].map(c => `"${c.replace(/"/g, '""')}"`).join(",");
         const rowLines = rows.map((r, i) =>
             [`"${(rowLabels[i] || `Row ${i + 1}`).replace(/"/g, '""')}"`,
@@ -412,6 +506,48 @@ function ManualDataset() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    };
+
+    // ─── Save Dataset to User Profile ───
+    const handleSaveDataset = async () => {
+        if (columns.length === 0) {
+            alert("Please add at least one column before saving.");
+            return;
+        }
+        const hasData = rows.some(r =>
+            columns.some(col => String(r[col] ?? "").trim() !== "")
+        );
+        if (!hasData) {
+            alert("Please enter data in at least one cell before saving.");
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const saved = await saveDataset({
+                id: datasetId,
+                name: datasetName.trim() || "Untitled Dataset",
+                category,
+                columns,
+                rows,
+                rowLabels,
+                source: "manual",
+            });
+
+            setDatasetId(saved.id || saved._id);
+            setIsSaved(true);
+            setSavedToastAction(true);
+            showToast(
+                datasetId
+                    ? `Dataset "${saved.name}" updated successfully! Saved to your profile.`
+                    : `Dataset "${saved.name}" saved successfully to your profile!`
+            );
+        } catch (err) {
+            console.error("Failed to save dataset:", err);
+            alert("Failed to save dataset. Please try again.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     // Navigate directly to visualization studio
@@ -476,10 +612,20 @@ function ManualDataset() {
                 {/* ─── Top Header ─── */}
                 <header className="manual-header">
                     <div>
-                        <div className="manual-badge">✦ Manual Data Entry Studio</div>
-                        <h1>{mode === "blank" ? "Create Your Own Dataset" : "Enter Dataset"}</h1>
+                        <div className="manual-badge">
+                            {mode === "edit" ? "✦ Editing Saved Dataset" : "✦ Manual Data Entry Studio"}
+                        </div>
+                        <h1>
+                            {mode === "edit"
+                                ? "Edit Dataset"
+                                : mode === "blank"
+                                ? "Create Your Own Dataset"
+                                : "Enter Dataset"}
+                        </h1>
                         <p>
-                            {mode === "blank"
+                            {mode === "edit"
+                                ? "Modify columns, rows, or values. Click 'Update Dataset' when you're done to save changes back to your profile."
+                                : mode === "blank"
                                 ? "Start from scratch — define your columns, name your rows, and fill in the data exactly how you need it."
                                 : "Build your dataset directly in this spreadsheet grid, or paste rows seamlessly from Excel, Google Sheets, or raw CSV."}
                         </p>
@@ -487,6 +633,24 @@ function ManualDataset() {
 
                     <div className="manual-header-actions">
                         <button
+                            type="button"
+                            className={`save-dataset-btn${isSaved ? " saved" : ""}`}
+                            onClick={handleSaveDataset}
+                            disabled={isSaving}
+                            title={isSaved ? "Saved to your profile" : "Save dataset to profile"}
+                        >
+                            {isSaving ? "⏳ Saving..." : isSaved ? "✓ Saved" : datasetId ? "💾 Update Dataset" : "💾 Save Dataset"}
+                        </button>
+                        <button
+                            type="button"
+                            className="profile-link-btn"
+                            onClick={() => navigate("/profile")}
+                            title="View your saved datasets in Profile"
+                        >
+                            👤 My Profile
+                        </button>
+                        <button
+                            type="button"
                             className={`create-own-btn${mode === "blank" ? " active" : ""}`}
                             onClick={handleCreateOwn}
                             title="Start with a blank dataset"
@@ -494,6 +658,7 @@ function ManualDataset() {
                             ✨ Create Your Own Dataset
                         </button>
                         <button
+                            type="button"
                             className="manual-back-btn"
                             onClick={() => navigate("/dataset/create")}
                             title="Return to selection"
@@ -532,7 +697,10 @@ function ManualDataset() {
                                     className="dataset-name-input"
                                     type="text"
                                     value={datasetName}
-                                    onChange={(e) => setDatasetName(e.target.value)}
+                                    onChange={(e) => {
+                                        setDatasetName(e.target.value);
+                                        setIsSaved(false);
+                                    }}
                                     placeholder="Enter dataset name (e.g. Sales Q3)"
                                 />
                             </div>
@@ -544,7 +712,10 @@ function ManualDataset() {
                                 id={`${uniqueFormId}-dataset-cat`}
                                 className="dataset-category-select"
                                 value={category}
-                                onChange={(e) => setCategory(e.target.value)}
+                                onChange={(e) => {
+                                    setCategory(e.target.value);
+                                    setIsSaved(false);
+                                }}
                             >
                                 <option value="General">General Data</option>
                                 <option value="Sales">Sales & Revenue</option>
@@ -637,10 +808,10 @@ function ManualDataset() {
                         </button>
                         <button
                             className="utility-btn danger"
-                            onClick={handleClearAll}
-                            title="Reset all rows and columns"
+                            onClick={handleClearDataset}
+                            title="Clear all rows and columns in a single click"
                         >
-                            ✕ Clear All
+                            🗑 Clear Dataset
                         </button>
                     </div>
                 </section>
@@ -666,109 +837,142 @@ function ManualDataset() {
                             <button className="table-btn table-btn-secondary" onClick={() => addMultipleRows(5)}>
                                 + 5 Rows
                             </button>
+                            <button
+                                className="table-btn table-btn-danger"
+                                onClick={handleClearDataset}
+                                title="Clear all rows and columns in a single click"
+                            >
+                                🗑 Clear Dataset
+                            </button>
                         </div>
                     </div>
 
                     {/* Table View */}
                     <div className="manual-table-wrapper">
-                        <table className="data-entry-table">
-                            <thead>
-                                <tr>
-                                    <th className="row-number-header" title="Row label — click a row label to rename it">
-                                        <span className="row-label-header-text">Row</span>
-                                    </th>
-                                    {columns.map((col) => {
-                                        const typeIcon = getColumnTypeIcon(col);
-                                        const isEditing = editingColName === col;
-                                        return (
-                                            <th key={col}>
-                                                <div className="column-header-container">
-                                                    <span className="column-type-badge" title={`Data type: ${typeIcon === "123" ? "Numeric" : "Text"}`}>
-                                                        {typeIcon}
-                                                    </span>
-                                                    <input
-                                                        type="text"
-                                                        className="column-title-input"
-                                                        value={isEditing ? colNameDraft : col}
-                                                        onFocus={() => startEditingCol(col)}
-                                                        onChange={(e) => setColNameDraft(e.target.value)}
-                                                        onBlur={commitColRename}
-                                                        onKeyDown={handleColNameKeyDown}
-                                                        title="Click to rename column"
-                                                    />
-                                                    {columns.length > 1 && (
-                                                        <button
-                                                            className="column-del-btn"
-                                                            onClick={() => deleteColumn(col)}
-                                                            title="Delete this column"
-                                                        >
-                                                            ×
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </th>
-                                        );
-                                    })}
-                                    <th className="action-header" title="Row actions">Del</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                {rows.map((row, rowIndex) => (
-                                    <tr key={rowIndex}>
-                                        {/* ─── Editable Row Label ─── */}
-                                        <td className="row-number-cell">
-                                            {editingLabelIdx === rowIndex ? (
-                                                <input
-                                                    ref={labelInputRef}
-                                                    className="row-label-edit-input"
-                                                    type="text"
-                                                    value={labelDraft}
-                                                    onChange={(e) => setLabelDraft(e.target.value)}
-                                                    onBlur={commitLabelEdit}
-                                                    onKeyDown={handleLabelKeyDown}
-                                                    placeholder={`Row ${rowIndex + 1}`}
-                                                />
-                                            ) : (
-                                                <button
-                                                    className="row-label-display"
-                                                    onClick={() => startEditingLabel(rowIndex)}
-                                                    title="Click to rename this row"
-                                                >
-                                                    <span className="row-label-text">
-                                                        {rowLabels[rowIndex] || `Row ${rowIndex + 1}`}
-                                                    </span>
-                                                    <span className="row-label-edit-icon">✎</span>
-                                                </button>
-                                            )}
-                                        </td>
-
-                                        {columns.map((col, colIndex) => (
-                                            <td key={col}>
-                                                <input
-                                                    id={`cell-${rowIndex}-${colIndex}`}
-                                                    className="data-cell-input"
-                                                    type="text"
-                                                    value={row[col] ?? ""}
-                                                    onChange={(e) => handleCellChange(rowIndex, col, e.target.value)}
-                                                    onKeyDown={(e) => handleKeyDown(e, rowIndex, colIndex)}
-                                                    placeholder="—"
-                                                />
-                                            </td>
-                                        ))}
-                                        <td className="action-cell">
-                                            <button
-                                                className="row-delete-btn"
-                                                onClick={() => deleteRow(rowIndex)}
-                                                title={`Delete row "${rowLabels[rowIndex] || `Row ${rowIndex + 1}`}"`}
-                                            >
-                                                🗑
-                                            </button>
-                                        </td>
+                        {columns.length === 0 && rows.length === 0 ? (
+                            <div className="empty-dataset-view">
+                                <div className="empty-dataset-icon">🗑️</div>
+                                <h3>Dataset is Empty</h3>
+                                <p>
+                                    All rows and columns have been cleared. You can start fresh with a blank grid or load a quick template.
+                                </p>
+                                <div className="empty-dataset-actions">
+                                    <button className="table-btn table-btn-primary" onClick={addColumn}>
+                                        + Add Column
+                                    </button>
+                                    <button className="table-btn table-btn-secondary" onClick={addRow}>
+                                        + Add Row
+                                    </button>
+                                    <button className="table-btn table-btn-secondary" onClick={handleResetBlankGrid}>
+                                        ▦ Blank 3×3 Grid
+                                    </button>
+                                    {undoSnapshot && (
+                                        <button className="table-btn table-btn-secondary undo-btn" onClick={handleUndoClear}>
+                                            ↩ Undo Clear
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <table className="data-entry-table">
+                                <thead>
+                                    <tr>
+                                        <th className="row-number-header" title="Row label — click a row label to rename it">
+                                            <span className="row-label-header-text">Row</span>
+                                        </th>
+                                        {columns.map((col) => {
+                                            const typeIcon = getColumnTypeIcon(col);
+                                            const isEditing = editingColName === col;
+                                            return (
+                                                <th key={col}>
+                                                    <div className="column-header-container">
+                                                        <span className="column-type-badge" title={`Data type: ${typeIcon === "123" ? "Numeric" : "Text"}`}>
+                                                            {typeIcon}
+                                                        </span>
+                                                        <input
+                                                            type="text"
+                                                            className="column-title-input"
+                                                            value={isEditing ? colNameDraft : col}
+                                                            onFocus={() => startEditingCol(col)}
+                                                            onChange={(e) => setColNameDraft(e.target.value)}
+                                                            onBlur={commitColRename}
+                                                            onKeyDown={handleColNameKeyDown}
+                                                            title="Click to rename column"
+                                                        />
+                                                        {columns.length > 1 && (
+                                                            <button
+                                                                className="column-del-btn"
+                                                                onClick={() => deleteColumn(col)}
+                                                                title="Delete this column"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </th>
+                                            );
+                                        })}
+                                        <th className="action-header" title="Row actions">Del</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+
+                                <tbody>
+                                    {rows.map((row, rowIndex) => (
+                                        <tr key={rowIndex}>
+                                            {/* ─── Editable Row Label ─── */}
+                                            <td className="row-number-cell">
+                                                {editingLabelIdx === rowIndex ? (
+                                                    <input
+                                                        ref={labelInputRef}
+                                                        className="row-label-edit-input"
+                                                        type="text"
+                                                        value={labelDraft}
+                                                        onChange={(e) => setLabelDraft(e.target.value)}
+                                                        onBlur={commitLabelEdit}
+                                                        onKeyDown={handleLabelKeyDown}
+                                                        placeholder={`Row ${rowIndex + 1}`}
+                                                    />
+                                                ) : (
+                                                    <button
+                                                        className="row-label-display"
+                                                        onClick={() => startEditingLabel(rowIndex)}
+                                                        title="Click to rename this row"
+                                                    >
+                                                        <span className="row-label-text">
+                                                            {rowLabels[rowIndex] || `Row ${rowIndex + 1}`}
+                                                        </span>
+                                                        <span className="row-label-edit-icon">✎</span>
+                                                    </button>
+                                                )}
+                                            </td>
+
+                                            {columns.map((col, colIndex) => (
+                                                <td key={col}>
+                                                    <input
+                                                        id={`cell-${rowIndex}-${colIndex}`}
+                                                        className="data-cell-input"
+                                                        type="text"
+                                                        value={row[col] ?? ""}
+                                                        onChange={(e) => handleCellChange(rowIndex, col, e.target.value)}
+                                                        onKeyDown={(e) => handleKeyDown(e, rowIndex, colIndex)}
+                                                        placeholder="—"
+                                                    />
+                                                </td>
+                                            ))}
+                                            <td className="action-cell">
+                                                <button
+                                                    className="row-delete-btn"
+                                                    onClick={() => deleteRow(rowIndex)}
+                                                    title={`Delete row "${rowLabels[rowIndex] || `Row ${rowIndex + 1}`}"`}
+                                                >
+                                                    🗑
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
 
                     {/* Quick Add Row Button Strip */}
@@ -794,12 +998,23 @@ function ManualDataset() {
 
                         <div className="footer-actions">
                             <button
+                                type="button"
+                                className={`save-dataset-footer-btn${isSaved ? " saved" : ""}`}
+                                onClick={handleSaveDataset}
+                                disabled={isSaving}
+                                title={isSaved ? "Saved to your profile" : "Save dataset to profile"}
+                            >
+                                {isSaving ? "⏳ Saving..." : isSaved ? "✓ Saved to Profile" : datasetId ? "💾 Update Dataset" : "💾 Save Dataset"}
+                            </button>
+                            <button
+                                type="button"
                                 className="visualize-btn"
                                 onClick={handleVisualize}
                             >
                                 📊 Visualize Data
                             </button>
                             <button
+                                type="button"
                                 className="continue-analysis-btn"
                                 onClick={handleContinue}
                             >
@@ -850,6 +1065,39 @@ February	South	38900	285"
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* ─── Toast Notification for Single Click Clear with Undo & Save ─── */}
+            {toastMessage && (
+                <div className="manual-dataset-toast">
+                    <span className="toast-icon">✓</span>
+                    <span className="toast-text">{toastMessage}</span>
+                    {savedToastAction && (
+                        <button
+                            type="button"
+                            className="toast-action-btn"
+                            onClick={() => navigate("/profile")}
+                        >
+                            View in Profile →
+                        </button>
+                    )}
+                    {undoSnapshot && (
+                        <button
+                            type="button"
+                            className="toast-undo-btn"
+                            onClick={handleUndoClear}
+                        >
+                            ↩ Undo
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        className="toast-close-btn"
+                        onClick={() => setToastMessage("")}
+                    >
+                        ×
+                    </button>
                 </div>
             )}
         </div>
