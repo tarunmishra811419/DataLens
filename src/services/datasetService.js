@@ -5,7 +5,8 @@
 // ═══════════════════════════════════════════════
 
 const STORAGE_KEY = "datalens_saved_datasets";
-const API_BASE_URL = "http://localhost:5000/api/datasets";
+const API_BASE_URL =
+    (import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api/datasets";
 
 /**
  * Initial starter datasets provided on first run so the workspace
