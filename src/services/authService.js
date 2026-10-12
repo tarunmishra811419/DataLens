@@ -4,7 +4,11 @@
 // and token persistence with backend API & offline fallback.
 // ═══════════════════════════════════════════════
 
-const API_BASE_URL = "http://localhost:5000/api/auth";
+const API_BASE_URL =
+    (import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api/auth";
+
+// Render free tier cold-starts can take up to 20 seconds — use a generous timeout.
+const REQUEST_TIMEOUT_MS = 20000;
 
 /**
  * Persist authentication session to storage.
@@ -55,7 +59,7 @@ export function clearAuthSession() {
  */
 export async function loginUser(email, password, rememberMe = true) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
         const response = await fetch(`${API_BASE_URL}/login`, {
@@ -113,7 +117,7 @@ export async function loginUser(email, password, rememberMe = true) {
  */
 export async function registerUser(name, email, password) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
         const response = await fetch(`${API_BASE_URL}/register`, {
@@ -168,7 +172,7 @@ export async function registerUser(name, email, password) {
  */
 export async function requestPasswordReset(email) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
         const response = await fetch(`${API_BASE_URL}/forgot-password`, {
