@@ -49,6 +49,11 @@ function Dashboard() {
                         Compare
                     </Link>
 
+                    <Link to="/stopwatch" className="nav-item">
+                        <span>⏱</span>
+                        Time Tracker
+                    </Link>
+
                     <Link to="/profile" className="nav-item">
                         <span>◎</span>
                         Profile
