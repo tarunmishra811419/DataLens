@@ -192,11 +192,21 @@ export async function saveDataset(datasetData) {
                     category,
                     columns,
                     rows,
+                    rowLabels,
+                    clientId: id || savedItem.id,
                     source,
                 }),
-            }).catch(() => {
-                // Background sync failure gracefully ignored in offline/local mode
-            });
+            })
+                .then((res) => (res.ok ? res.json() : null))
+                .then((cloudItem) => {
+                    if (cloudItem && cloudItem._id && !savedItem._id) {
+                        savedItem._id = cloudItem._id;
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(existingDatasets));
+                    }
+                })
+                .catch(() => {
+                    // Background sync failure gracefully ignored in offline/local mode
+                });
         }
     } catch {
         // Ignore network errors in local mode
@@ -261,3 +271,73 @@ export function getDatasetStats() {
         totalCells,
     };
 }
+
+/**
+ * Full bi-directional cloud sync for authenticated users.
+ * Retrieves datasets from MongoDB and merges with local offline cache.
+ */
+export async function syncDatasetsWithBackend() {
+    const token =
+        localStorage.getItem("datalens_token") ||
+        sessionStorage.getItem("datalens_token");
+    if (!token || token.startsWith("demo-")) return;
+
+    try {
+        const res = await fetch(API_BASE_URL, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (!res.ok) return;
+
+        const remoteDatasets = await res.json();
+        if (!Array.isArray(remoteDatasets)) return;
+
+        const localDatasets = getSavedDatasets();
+        const mergedMap = new Map();
+
+        localDatasets.forEach((d) => {
+            const key = d.id || d._id;
+            if (key) mergedMap.set(key, d);
+        });
+
+        remoteDatasets.forEach((rd) => {
+            const key = rd.clientId || rd._id;
+            mergedMap.set(key, {
+                id: key,
+                _id: rd._id,
+                clientId: rd.clientId || key,
+                name: rd.name,
+                category: rd.category || "General",
+                columns: rd.columns || [],
+                rows: rd.rows || [],
+                rowLabels: rd.rowLabels || [],
+                source: rd.source || "manual",
+                timePeriod: rd.timePeriod || "",
+                createdAt: rd.createdAt,
+                updatedAt: rd.updatedAt,
+            });
+        });
+
+        const mergedList = Array.from(mergedMap.values()).sort(
+            (a, b) =>
+                new Date(b.updatedAt || b.createdAt) -
+                new Date(a.updatedAt || a.createdAt)
+        );
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedList));
+        window.dispatchEvent(
+            new CustomEvent("datalens_datasets_updated", {
+                detail: { synced: true },
+            })
+        );
+    } catch {
+        // Fallback gracefully
+    }
+}
+
+// Background sync on init
+setTimeout(() => {
+    syncDatasetsWithBackend();
+}, 500);

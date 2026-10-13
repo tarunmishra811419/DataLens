@@ -14,19 +14,11 @@ const datasetSchema = new mongoose.Schema(
         },
         category: {
             type: String,
-            enum: [
-                "Finance",
-                "Education",
-                "Fitness",
-                "Career",
-                "Business",
-                "Custom",
-            ],
-            default: "Custom",
+            default: "General",
+            trim: true,
         },
         source: {
             type: String,
-            enum: ["manual", "upload"],
             default: "manual",
         },
         columns: {
@@ -36,6 +28,14 @@ const datasetSchema = new mongoose.Schema(
         rows: {
             type: [mongoose.Schema.Types.Mixed],
             default: [],
+        },
+        rowLabels: {
+            type: [String],
+            default: [],
+        },
+        clientId: {
+            type: String,
+            default: "",
         },
         timePeriod: {
             type: String,

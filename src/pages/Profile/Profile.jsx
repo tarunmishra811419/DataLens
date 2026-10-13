@@ -1,16 +1,47 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { getAuthSession, clearAuthSession } from "../../services/authService";
-import { getSavedDatasets, deleteSavedDataset, getDatasetStats } from "../../services/datasetService";
+import {
+    getAuthSession,
+    clearAuthSession,
+    updateUserProfile,
+    changeUserPassword,
+} from "../../services/authService";
+import {
+    getSavedDatasets,
+    deleteSavedDataset,
+    getDatasetStats,
+} from "../../services/datasetService";
 import "./Profile.css";
 
 export default function Profile() {
     const navigate = useNavigate();
     const session = getAuthSession();
-    const user = session?.user || {
-        name: "Tarun Mishra",
-        email: "tarunmishra811419@gmail.com",
-    };
+    const [user, setUser] = useState(
+        () =>
+            session?.user || {
+                name: "Tarun Mishra",
+                email: "tarunmishra811419@gmail.com",
+                role: "Data Analyst",
+                bio: "",
+                location: "",
+            }
+    );
+
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [editForm, setEditForm] = useState({
+        name: user.name || "",
+        role: user.role || "Data Analyst",
+        bio: user.bio || "",
+        location: user.location || "",
+    });
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [pwForm, setPwForm] = useState({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+    });
+    const [feedbackMsg, setFeedbackMsg] = useState({ text: "", type: "" });
+    const [isSaving, setIsSaving] = useState(false);
 
     const [notifications, setNotifications] = useState(true);
     const [autoSave, setAutoSave] = useState(true);
@@ -31,6 +62,54 @@ export default function Profile() {
             window.removeEventListener("datalens_datasets_updated", handleDatasetsUpdated);
         };
     }, []);
+
+    const showFeedback = (text, type = "success") => {
+        setFeedbackMsg({ text, type });
+        setTimeout(() => setFeedbackMsg({ text: "", type: "" }), 4000);
+    };
+
+    const handleSaveProfile = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            const updated = await updateUserProfile({
+                name: editForm.name,
+                role: editForm.role,
+                bio: editForm.bio,
+                location: editForm.location,
+            });
+            setUser(updated);
+            setIsEditingProfile(false);
+            showFeedback("✓ Profile successfully saved to database!", "success");
+        } catch (err) {
+            showFeedback(err.message || "Failed to save profile", "error");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleChangePassword = async (e) => {
+        e.preventDefault();
+        if (pwForm.newPassword !== pwForm.confirmPassword) {
+            showFeedback("New passwords do not match", "error");
+            return;
+        }
+        if (pwForm.newPassword.length < 6) {
+            showFeedback("Password must be at least 6 characters", "error");
+            return;
+        }
+        setIsSaving(true);
+        try {
+            await changeUserPassword(pwForm.currentPassword, pwForm.newPassword);
+            setIsChangingPassword(false);
+            setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+            showFeedback("✓ Password successfully updated!", "success");
+        } catch (err) {
+            showFeedback(err.message || "Failed to update password", "error");
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const categories = ["All", ...Array.from(new Set(datasets.map((d) => d.category || "General").filter(Boolean)))];
 
@@ -87,6 +166,29 @@ export default function Profile() {
                     <span style={{ fontSize: "13px", color: "#94a3b8" }}>Account Settings & Profile</span>
                 </header>
 
+                {/* Status Toast */}
+                {feedbackMsg.text && (
+                    <div
+                        style={{
+                            padding: "12px 18px",
+                            borderRadius: "10px",
+                            marginBottom: "20px",
+                            fontWeight: 600,
+                            fontSize: "14px",
+                            background:
+                                feedbackMsg.type === "error"
+                                    ? "rgba(239, 68, 68, 0.15)"
+                                    : "rgba(16, 185, 129, 0.15)",
+                            border: `1px solid ${
+                                feedbackMsg.type === "error" ? "#ef4444" : "#10b981"
+                            }`,
+                            color: feedbackMsg.type === "error" ? "#fca5a5" : "#6ee7b7",
+                        }}
+                    >
+                        {feedbackMsg.text}
+                    </div>
+                )}
+
                 {/* User Hero Card */}
                 <section className="profile-card">
                     <div className="profile-avatar-wrap">
@@ -96,16 +198,273 @@ export default function Profile() {
                         <div className="profile-user-info">
                             <h1>{user.name}</h1>
                             <p>{user.email}</p>
-                            <span className="profile-badge">● Active Analyst</span>
+                            <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginTop: "6px" }}>
+                                <span className="profile-badge">● {user.role || "Active Analyst"}</span>
+                                {user.location && (
+                                    <span style={{ fontSize: "12px", color: "#94a3b8" }}>📍 {user.location}</span>
+                                )}
+                            </div>
+                            {user.bio && (
+                                <p style={{ marginTop: "8px", fontSize: "13px", color: "#cbd5e1", fontStyle: "italic" }}>
+                                    "{user.bio}"
+                                </p>
+                            )}
                         </div>
                     </div>
 
                     <div className="profile-actions">
+                        <button
+                            type="button"
+                            className="profile-btn-edit"
+                            onClick={() => {
+                                setIsEditingProfile(!isEditingProfile);
+                                setIsChangingPassword(false);
+                            }}
+                        >
+                            ✏ Edit Profile
+                        </button>
+                        <button
+                            type="button"
+                            className="profile-btn-pw"
+                            onClick={() => {
+                                setIsChangingPassword(!isChangingPassword);
+                                setIsEditingProfile(false);
+                            }}
+                        >
+                            🔒 Password
+                        </button>
                         <button className="profile-btn-logout" onClick={handleLogout}>
                             ↪ Log Out
                         </button>
                     </div>
                 </section>
+
+                {/* Edit Profile Panel */}
+                {isEditingProfile && (
+                    <section className="profile-section" style={{ marginBottom: "28px" }}>
+                        <h3 className="profile-section-title">✏ Edit Profile Information</h3>
+                        <form onSubmit={handleSaveProfile} style={{ display: "grid", gap: "16px", marginTop: "16px" }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
+                                <div>
+                                    <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#94a3b8", marginBottom: "6px" }}>
+                                        Full Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={editForm.name}
+                                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px 14px",
+                                            background: "rgba(255, 255, 255, 0.05)",
+                                            border: "1px solid rgba(255, 255, 255, 0.15)",
+                                            borderRadius: "8px",
+                                            color: "#fff",
+                                            fontSize: "14px",
+                                        }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#94a3b8", marginBottom: "6px" }}>
+                                        Role / Job Title
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editForm.role}
+                                        onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                                        placeholder="e.g. Senior Data Analyst"
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px 14px",
+                                            background: "rgba(255, 255, 255, 0.05)",
+                                            border: "1px solid rgba(255, 255, 255, 0.15)",
+                                            borderRadius: "8px",
+                                            color: "#fff",
+                                            fontSize: "14px",
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
+                                <div>
+                                    <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#94a3b8", marginBottom: "6px" }}>
+                                        Location
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editForm.location}
+                                        onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                                        placeholder="e.g. New Delhi, India"
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px 14px",
+                                            background: "rgba(255, 255, 255, 0.05)",
+                                            border: "1px solid rgba(255, 255, 255, 0.15)",
+                                            borderRadius: "8px",
+                                            color: "#fff",
+                                            fontSize: "14px",
+                                        }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#94a3b8", marginBottom: "6px" }}>
+                                        Professional Bio
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editForm.bio}
+                                        onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                                        placeholder="Brief summary of your analytical focus"
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px 14px",
+                                            background: "rgba(255, 255, 255, 0.05)",
+                                            border: "1px solid rgba(255, 255, 255, 0.15)",
+                                            borderRadius: "8px",
+                                            color: "#fff",
+                                            fontSize: "14px",
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
+                                <button
+                                    type="submit"
+                                    disabled={isSaving}
+                                    style={{
+                                        background: "linear-gradient(135deg, #6366f1, #3b82f6)",
+                                        color: "#fff",
+                                        border: "none",
+                                        padding: "10px 20px",
+                                        borderRadius: "8px",
+                                        fontWeight: 600,
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    {isSaving ? "Saving..." : "Save Profile"}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditingProfile(false)}
+                                    style={{
+                                        background: "rgba(255, 255, 255, 0.08)",
+                                        color: "#cbd5e1",
+                                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                                        padding: "10px 16px",
+                                        borderRadius: "8px",
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+                )}
+
+                {/* Change Password Panel */}
+                {isChangingPassword && (
+                    <section className="profile-section" style={{ marginBottom: "28px" }}>
+                        <h3 className="profile-section-title">🔒 Change Account Password</h3>
+                        <form onSubmit={handleChangePassword} style={{ display: "grid", gap: "16px", maxWidth: "480px", marginTop: "16px" }}>
+                            <div>
+                                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#94a3b8", marginBottom: "6px" }}>
+                                    Current Password
+                                </label>
+                                <input
+                                    type="password"
+                                    required
+                                    value={pwForm.currentPassword}
+                                    onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
+                                    style={{
+                                        width: "100%",
+                                        padding: "10px 14px",
+                                        background: "rgba(255, 255, 255, 0.05)",
+                                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                                        borderRadius: "8px",
+                                        color: "#fff",
+                                        fontSize: "14px",
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#94a3b8", marginBottom: "6px" }}>
+                                    New Password (min 6 characters)
+                                </label>
+                                <input
+                                    type="password"
+                                    required
+                                    value={pwForm.newPassword}
+                                    onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
+                                    style={{
+                                        width: "100%",
+                                        padding: "10px 14px",
+                                        background: "rgba(255, 255, 255, 0.05)",
+                                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                                        borderRadius: "8px",
+                                        color: "#fff",
+                                        fontSize: "14px",
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#94a3b8", marginBottom: "6px" }}>
+                                    Confirm New Password
+                                </label>
+                                <input
+                                    type="password"
+                                    required
+                                    value={pwForm.confirmPassword}
+                                    onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
+                                    style={{
+                                        width: "100%",
+                                        padding: "10px 14px",
+                                        background: "rgba(255, 255, 255, 0.05)",
+                                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                                        borderRadius: "8px",
+                                        color: "#fff",
+                                        fontSize: "14px",
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
+                                <button
+                                    type="submit"
+                                    disabled={isSaving}
+                                    style={{
+                                        background: "linear-gradient(135deg, #10b981, #059669)",
+                                        color: "#fff",
+                                        border: "none",
+                                        padding: "10px 20px",
+                                        borderRadius: "8px",
+                                        fontWeight: 600,
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    {isSaving ? "Updating..." : "Update Password"}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsChangingPassword(false)}
+                                    style={{
+                                        background: "rgba(255, 255, 255, 0.08)",
+                                        color: "#cbd5e1",
+                                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                                        padding: "10px 16px",
+                                        borderRadius: "8px",
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+                )}
 
                 {/* Analytics Stats */}
                 <section className="profile-stats-grid">

@@ -210,3 +210,90 @@ export async function requestPasswordReset(email) {
         throw err;
     }
 }
+
+/**
+ * Update authenticated user profile details in cloud and local session.
+ */
+export async function updateUserProfile(profileData) {
+    const session = getAuthSession();
+    if (!session) throw new Error("Not authenticated");
+
+    const { token, user } = session;
+
+    // If demo token, update local session directly
+    if (token.startsWith("demo-")) {
+        const updatedUser = { ...user, ...profileData };
+        setAuthSession(updatedUser, token);
+        return updatedUser;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/profile`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(profileData),
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Failed to update profile");
+        }
+
+        const updatedUser = { ...user, ...data };
+        setAuthSession(updatedUser, token);
+        return updatedUser;
+    } catch (err) {
+        clearTimeout(timeoutId);
+        throw err;
+    }
+}
+
+/**
+ * Update user password with current password verification.
+ */
+export async function changeUserPassword(currentPassword, newPassword) {
+    const session = getAuthSession();
+    if (!session) throw new Error("Not authenticated");
+
+    const { token } = session;
+
+    if (token.startsWith("demo-")) {
+        return { success: true, message: "Password updated in demo session" };
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/password`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ currentPassword, newPassword }),
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Failed to update password");
+        }
+
+        return { success: true, message: data.message };
+    } catch (err) {
+        clearTimeout(timeoutId);
+        throw err;
+    }
+}

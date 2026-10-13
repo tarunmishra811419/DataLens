@@ -21,6 +21,30 @@ const userSchema = new mongoose.Schema(
             minlength: 6,
             select: false,
         },
+        role: {
+            type: String,
+            default: "Data Analyst",
+            trim: true,
+        },
+        bio: {
+            type: String,
+            default: "",
+            trim: true,
+        },
+        location: {
+            type: String,
+            default: "",
+            trim: true,
+        },
+        phone: {
+            type: String,
+            default: "",
+            trim: true,
+        },
+        avatar: {
+            type: String,
+            default: "",
+        },
     },
     { timestamps: true }
 );
