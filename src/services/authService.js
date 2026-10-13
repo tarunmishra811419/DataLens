@@ -17,6 +17,11 @@ export function setAuthSession(user, token, rememberMe = true) {
     const storage = rememberMe ? localStorage : sessionStorage;
     storage.setItem("datalens_user", JSON.stringify(user));
     storage.setItem("datalens_token", token);
+    if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("datalens_auth_changed"));
+        window.dispatchEvent(new Event("datalens_stopwatch_updated"));
+        window.dispatchEvent(new CustomEvent("datalens_datasets_updated", { detail: { auth: "login" } }));
+    }
 }
 
 /**
@@ -44,13 +49,18 @@ export function getAuthSession() {
 }
 
 /**
- * Clear authentication session.
+ * Clear authentication session and notify services.
  */
 export function clearAuthSession() {
     localStorage.removeItem("datalens_user");
     localStorage.removeItem("datalens_token");
     sessionStorage.removeItem("datalens_user");
     sessionStorage.removeItem("datalens_token");
+    if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("datalens_auth_changed"));
+        window.dispatchEvent(new Event("datalens_stopwatch_updated"));
+        window.dispatchEvent(new CustomEvent("datalens_datasets_updated", { detail: { auth: "logout" } }));
+    }
 }
 
 /**

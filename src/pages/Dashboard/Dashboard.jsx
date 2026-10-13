@@ -5,7 +5,9 @@ import "./Dashboard.css";
 function Dashboard() {
     const navigate = useNavigate();
     const session = getAuthSession();
-    const userName = session?.user?.name || "Tarun";
+    const user = session?.user;
+    const userName = user?.name || "Guest Analyst";
+    const userRole = user?.role || (user ? "Data Analyst" : "Guest Mode");
 
     const handleLogout = () => {
         clearAuthSession();
@@ -64,23 +66,88 @@ function Dashboard() {
                 <div className="sidebar-bottom">
                     <button
                         className="sidebar-settings"
-                        onClick={() => navigate("/profile")}
+                        onClick={() => navigate(user ? "/profile" : "/login")}
                     >
                         ⚙ Settings
                     </button>
 
-                    <button
-                        className="sidebar-logout"
-                        onClick={handleLogout}
-                    >
-                        ↪ Logout
-                    </button>
+                    {user ? (
+                        <button
+                            className="sidebar-logout"
+                            onClick={handleLogout}
+                        >
+                            ↪ Logout
+                        </button>
+                    ) : (
+                        <Link
+                            to="/login"
+                            className="sidebar-logout"
+                            style={{ textDecoration: "none", display: "block", textAlign: "center" }}
+                        >
+                            → Sign In
+                        </Link>
+                    )}
                 </div>
 
             </aside>
 
             {/* Main Content */}
             <main className="dashboard-main">
+
+                {/* Guest Notice Banner */}
+                {!user && (
+                    <div
+                        style={{
+                            background: "rgba(99, 102, 241, 0.12)",
+                            border: "1px solid rgba(99, 102, 241, 0.25)",
+                            borderRadius: "14px",
+                            padding: "12px 20px",
+                            marginBottom: "24px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            flexWrap: "wrap",
+                            gap: "12px",
+                        }}
+                    >
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <span style={{ fontSize: "18px" }}>☁️</span>
+                            <span style={{ fontSize: "14px", color: "#e2e8f0" }}>
+                                Exploring in <strong>Guest Mode</strong>. Datasets are only cached locally on this device.
+                            </span>
+                        </div>
+                        <div style={{ display: "flex", gap: "10px" }}>
+                            <Link
+                                to="/register"
+                                style={{
+                                    background: "#6366f1",
+                                    color: "#fff",
+                                    padding: "6px 14px",
+                                    borderRadius: "8px",
+                                    fontSize: "13px",
+                                    fontWeight: 600,
+                                    textDecoration: "none",
+                                }}
+                            >
+                                Create Free Account
+                            </Link>
+                            <Link
+                                to="/login"
+                                style={{
+                                    background: "rgba(255, 255, 255, 0.08)",
+                                    color: "#cbd5e1",
+                                    padding: "6px 14px",
+                                    borderRadius: "8px",
+                                    fontSize: "13px",
+                                    fontWeight: 600,
+                                    textDecoration: "none",
+                                }}
+                            >
+                                Sign In
+                            </Link>
+                        </div>
+                    </div>
+                )}
 
                 {/* Top Bar */}
                 <header className="dashboard-header">
@@ -93,14 +160,14 @@ function Dashboard() {
                         <h1>Dashboard</h1>
                     </div>
 
-                    <Link to="/profile" className="dashboard-user" style={{ textDecoration: "none", color: "inherit" }}>
+                    <Link to={user ? "/profile" : "/login"} className="dashboard-user" style={{ textDecoration: "none", color: "inherit" }}>
                         <div className="user-avatar">
                             {userName.charAt(0).toUpperCase()}
                         </div>
 
                         <div>
                             <strong>{userName}</strong>
-                            <span>Data Analyst</span>
+                            <span>{userRole}</span>
                         </div>
                     </Link>
 

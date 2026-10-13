@@ -4,9 +4,27 @@
 // Operates with persistent LocalStorage and syncs with backend API.
 // ═══════════════════════════════════════════════
 
-const STORAGE_KEY = "datalens_saved_datasets";
+import { getAuthSession } from "./authService.js";
+
 const API_BASE_URL =
     (import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api/datasets";
+
+/**
+ * Returns a unique storage key for the active user session.
+ * Ensures User A never sees User B's datasets on the same machine.
+ */
+export function getDatasetStorageKey() {
+    try {
+        const session = getAuthSession();
+        const uid =
+            session?.user?._id ||
+            session?.user?.id ||
+            (session?.user?.email ? encodeURIComponent(session.user.email) : "guest");
+        return `datalens_saved_datasets_${uid}`;
+    } catch {
+        return "datalens_saved_datasets_guest";
+    }
+}
 
 /**
  * Initial starter datasets provided on first run so the workspace
@@ -72,11 +90,18 @@ const DEFAULT_INITIAL_DATASETS = [
  */
 export function getSavedDatasets() {
     try {
-        const stored = localStorage.getItem(STORAGE_KEY);
+        const key = getDatasetStorageKey();
+        const stored = localStorage.getItem(key);
         if (!stored) {
-            // Seed initial sample datasets on first check
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_INITIAL_DATASETS));
-            return [...DEFAULT_INITIAL_DATASETS];
+            const session = getAuthSession();
+            // If visitor is guest, seed starter samples for interactive exploration
+            if (!session?.user) {
+                localStorage.setItem(key, JSON.stringify(DEFAULT_INITIAL_DATASETS));
+                return [...DEFAULT_INITIAL_DATASETS];
+            }
+            // For registered user, initialize empty (cloud sync will populate their datasets)
+            localStorage.setItem(key, JSON.stringify([]));
+            return [];
         }
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
@@ -169,7 +194,7 @@ export async function saveDataset(datasetData) {
 
     // Persist to local storage
     try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(existingDatasets));
+        localStorage.setItem(getDatasetStorageKey(), JSON.stringify(existingDatasets));
         window.dispatchEvent(new CustomEvent("datalens_datasets_updated", { detail: savedItem }));
     } catch (e) {
         console.error("Failed to persist dataset to localStorage", e);
@@ -201,7 +226,7 @@ export async function saveDataset(datasetData) {
                 .then((cloudItem) => {
                     if (cloudItem && cloudItem._id && !savedItem._id) {
                         savedItem._id = cloudItem._id;
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify(existingDatasets));
+                        localStorage.setItem(getDatasetStorageKey(), JSON.stringify(existingDatasets));
                     }
                 })
                 .catch(() => {
@@ -224,7 +249,7 @@ export async function deleteSavedDataset(id) {
     const filtered = existingDatasets.filter((d) => d.id !== id && d._id !== id);
 
     try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+        localStorage.setItem(getDatasetStorageKey(), JSON.stringify(filtered));
         window.dispatchEvent(new CustomEvent("datalens_datasets_updated", { detail: { id, deleted: true } }));
     } catch (e) {
         console.error("Failed to delete dataset from localStorage", e);
@@ -326,7 +351,7 @@ export async function syncDatasetsWithBackend() {
                 new Date(a.updatedAt || a.createdAt)
         );
 
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedList));
+        localStorage.setItem(getDatasetStorageKey(), JSON.stringify(mergedList));
         window.dispatchEvent(
             new CustomEvent("datalens_datasets_updated", {
                 detail: { synced: true },
@@ -337,7 +362,13 @@ export async function syncDatasetsWithBackend() {
     }
 }
 
-// Background sync on init
+// Background sync on init and auth change
 setTimeout(() => {
     syncDatasetsWithBackend();
 }, 500);
+
+if (typeof window !== "undefined") {
+    window.addEventListener("datalens_auth_changed", () => {
+        syncDatasetsWithBackend();
+    });
+}

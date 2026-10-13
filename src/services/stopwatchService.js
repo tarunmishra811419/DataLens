@@ -1,9 +1,27 @@
 // stopwatchService.js
-// Persists daily time-tracking sessions with local storage & cloud database sync.
+// Persists daily time-tracking sessions with per-user local storage & cloud database sync.
 
-const STORAGE_KEY = "datalens_stopwatch_sessions";
+import { getAuthSession } from "./authService.js";
+
 const API_BASE_URL =
     (import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api/time-sessions";
+
+/**
+ * Returns a unique storage key for the active user session.
+ * Ensures User A's tracked time is isolated from User B.
+ */
+export function getStopwatchStorageKey() {
+    try {
+        const session = getAuthSession();
+        const uid =
+            session?.user?._id ||
+            session?.user?.id ||
+            (session?.user?.email ? encodeURIComponent(session.user.email) : "guest");
+        return `datalens_stopwatch_sessions_${uid}`;
+    } catch {
+        return "datalens_stopwatch_sessions_guest";
+    }
+}
 
 function getAuthToken() {
     const token =
@@ -21,7 +39,8 @@ export function getTodayKey(ts = Date.now()) {
 
 export function getAllSessions() {
     try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const key = getStopwatchStorageKey();
+        const raw = localStorage.getItem(key);
         return raw ? JSON.parse(raw) : {};
     } catch {
         return {};
@@ -61,7 +80,7 @@ export async function syncTimeSessionsWithBackend() {
         }
 
         if (changed) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+            localStorage.setItem(getStopwatchStorageKey(), JSON.stringify(merged));
             window.dispatchEvent(new Event("datalens_stopwatch_updated"));
         }
     } catch {
@@ -75,7 +94,7 @@ export function addSecondsToDay(seconds, dayKey = getTodayKey()) {
 
     const sessions = getAllSessions();
     sessions[dayKey] = (sessions[dayKey] || 0) + rounded;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    localStorage.setItem(getStopwatchStorageKey(), JSON.stringify(sessions));
     window.dispatchEvent(new Event("datalens_stopwatch_updated"));
 
     // Async push to backend
@@ -119,7 +138,7 @@ export function getLastNDays(n = 14) {
 export function clearDay(dayKey = getTodayKey()) {
     const sessions = getAllSessions();
     delete sessions[dayKey];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    localStorage.setItem(getStopwatchStorageKey(), JSON.stringify(sessions));
     window.dispatchEvent(new Event("datalens_stopwatch_updated"));
 
     const token = getAuthToken();
@@ -134,7 +153,7 @@ export function clearDay(dayKey = getTodayKey()) {
 }
 
 export function clearAllSessions() {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(getStopwatchStorageKey());
     window.dispatchEvent(new Event("datalens_stopwatch_updated"));
 
     const token = getAuthToken();
@@ -169,3 +188,9 @@ export function formatShort(totalSeconds) {
 setTimeout(() => {
     syncTimeSessionsWithBackend();
 }, 500);
+
+if (typeof window !== "undefined") {
+    window.addEventListener("datalens_auth_changed", () => {
+        syncTimeSessionsWithBackend();
+    });
+}

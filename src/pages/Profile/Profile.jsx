@@ -16,23 +16,20 @@ import "./Profile.css";
 export default function Profile() {
     const navigate = useNavigate();
     const session = getAuthSession();
-    const [user, setUser] = useState(
-        () =>
-            session?.user || {
-                name: "Tarun Mishra",
-                email: "tarunmishra811419@gmail.com",
-                role: "Data Analyst",
-                bio: "",
-                location: "",
-            }
-    );
+    const [user, setUser] = useState(() => session?.user || null);
+
+    useEffect(() => {
+        if (!session?.user) {
+            navigate("/login", { replace: true });
+        }
+    }, [session, navigate]);
 
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [editForm, setEditForm] = useState({
-        name: user.name || "",
-        role: user.role || "Data Analyst",
-        bio: user.bio || "",
-        location: user.location || "",
+        name: session?.user?.name || "",
+        role: session?.user?.role || "Data Analyst",
+        bio: session?.user?.bio || "",
+        location: session?.user?.location || "",
     });
     const [isChangingPassword, setIsChangingPassword] = useState(false);
     const [pwForm, setPwForm] = useState({
@@ -155,6 +152,16 @@ export default function Profile() {
         clearAuthSession();
         navigate("/login");
     };
+
+    if (!user) {
+        return (
+            <div className="profile-page" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh" }}>
+                <div style={{ textAlign: "center" }}>
+                    <p style={{ color: "#94a3b8" }}>Redirecting to sign in...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="profile-page">
