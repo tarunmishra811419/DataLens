@@ -6,12 +6,12 @@ import "./UploadDataset.css";
 
 // ── File type helpers ─────────────────────────────────────────────────────────
 const ACCEPTED_TYPES = {
-    ".csv":  { label: "CSV",   icon: "📄", color: "#10b981" },
-    ".tsv":  { label: "TSV",   icon: "📄", color: "#10b981" },
-    ".txt":  { label: "TXT",   icon: "📝", color: "#64748b" },
-    ".xlsx": { label: "Excel", icon: "📊", color: "#16a34a" },
-    ".xls":  { label: "Excel", icon: "📊", color: "#16a34a" },
-    ".json": { label: "JSON",  icon: "🔧", color: "#f59e0b" },
+    ".csv":  { label: "CSV",   color: "#10b981" },
+    ".tsv":  { label: "TSV",   color: "#10b981" },
+    ".txt":  { label: "TXT",   color: "#64748b" },
+    ".xlsx": { label: "Excel", color: "#2563eb" },
+    ".xls":  { label: "Excel", color: "#2563eb" },
+    ".json": { label: "JSON",  color: "#f59e0b" },
 };
 
 function getExtension(filename) {
@@ -48,38 +48,19 @@ function parseExcel(arrayBuffer) {
     const workbook = XLSX.read(arrayBuffer, { type: "array" });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-    const columns = jsonData.length > 0 ? Object.keys(jsonData[0]) : [];
-    // Convert all values to strings for consistency
-    const rows = jsonData.map(row => {
-        const r = {};
-        columns.forEach(col => { r[col] = String(row[col] ?? ""); });
-        return r;
-    });
-    return { rows, columns };
+    const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+    if (json.length === 0) throw new Error("The selected Excel sheet contains no data.");
+    const cols = Object.keys(json[0]);
+    return { rows: json, columns: cols };
 }
 
 function parseJSON(text) {
     const parsed = JSON.parse(text);
-    let arr;
-    if (Array.isArray(parsed)) {
-        arr = parsed;
-    } else if (parsed && typeof parsed === "object") {
-        // Try to find an array property
-        const arrays = Object.values(parsed).filter(v => Array.isArray(v));
-        if (arrays.length > 0) arr = arrays[0];
-        else arr = [parsed];
-    } else {
-        throw new Error("JSON must contain an array of objects.");
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+        throw new Error("JSON file must contain an array of objects with data records.");
     }
-    if (arr.length === 0) return { rows: [], columns: [] };
-    const columns = [...new Set(arr.flatMap(o => Object.keys(o)))];
-    const rows = arr.map(obj => {
-        const r = {};
-        columns.forEach(col => { r[col] = String(obj[col] ?? ""); });
-        return r;
-    });
-    return { rows, columns };
+    const cols = Object.keys(parsed[0]);
+    return { rows: parsed, columns: cols };
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -89,57 +70,50 @@ export default function UploadDataset() {
     const dropRef = useRef(null);
 
     const [isDragging, setIsDragging] = useState(false);
-    const [file, setFile] = useState(null);
-    const [fileInfo, setFileInfo] = useState(null); // { ext, label, icon, color }
     const [parsing, setParsing] = useState(false);
+    const [file, setFile] = useState(null);
+    const [parsedData, setParsedData] = useState(null);
     const [error, setError] = useState("");
-    const [parsedData, setParsedData] = useState(null); // { rows, columns }
 
-    // ── Process file ──────────────────────────────────────────────────────────
+    // ── File processing core ──────────────────────────────────────────────────
     const processFile = useCallback(async (selectedFile) => {
+        if (!selectedFile) return;
         setError("");
-        setParsedData(null);
         setFile(selectedFile);
+        setParsedData(null);
+        setParsing(true);
 
         const ext = getExtension(selectedFile.name);
-        const info = ACCEPTED_TYPES[ext];
-
-        if (!info) {
-            setError(`Unsupported file type "${ext}". Please upload CSV, Excel, JSON, or TSV.`);
-            setFile(null);
-            return;
-        }
-
-        setFileInfo(info);
-        setParsing(true);
 
         try {
             let result;
 
-            if (ext === ".xlsx" || ext === ".xls") {
+            if (ext === ".csv") {
+                const text = await selectedFile.text();
+                result = await parseCSV(text, ",");
+            } else if (ext === ".tsv" || ext === ".txt") {
+                const text = await selectedFile.text();
+                const sep = text.includes("\t") ? "\t" : ",";
+                result = await parseCSV(text, sep);
+            } else if (ext === ".xlsx" || ext === ".xls") {
                 const buffer = await selectedFile.arrayBuffer();
                 result = parseExcel(buffer);
             } else if (ext === ".json") {
                 const text = await selectedFile.text();
                 result = parseJSON(text);
-            } else if (ext === ".tsv") {
-                const text = await selectedFile.text();
-                result = await parseCSV(text, "\t");
             } else {
-                // CSV / TXT
-                const text = await selectedFile.text();
-                result = await parseCSV(text, ",");
+                throw new Error(
+                    `Unsupported file format "${ext}". Supported extensions: .csv, .tsv, .txt, .xlsx, .xls, .json`
+                );
             }
 
             if (!result.rows || result.rows.length === 0) {
-                setError("The file appears to be empty or has no data rows.");
-                setFile(null);
-                setParsedData(null);
-            } else {
-                setParsedData(result);
+                throw new Error("The uploaded file appears to be empty or has no data rows.");
             }
+
+            setParsedData(result);
         } catch (err) {
-            setError("Could not parse the file: " + (err.message || "Unknown error."));
+            setError(err.message || "An unexpected error occurred while parsing the file.");
             setFile(null);
             setParsedData(null);
         } finally {
@@ -147,54 +121,68 @@ export default function UploadDataset() {
         }
     }, []);
 
-    // ── Input change ─────────────────────────────────────────────────────────
-    const handleFileChange = (e) => {
-        const f = e.target.files[0];
-        if (f) processFile(f);
+    // ── Drag & drop handlers ──────────────────────────────────────────────────
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
     };
 
-    // ── Drag & Drop ──────────────────────────────────────────────────────────
-    const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
-    const handleDragLeave = () => setIsDragging(false);
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
+
     const handleDrop = (e) => {
         e.preventDefault();
+        e.stopPropagation();
         setIsDragging(false);
-        const f = e.dataTransfer.files[0];
-        if (f) processFile(f);
+        const droppedFile = e.dataTransfer.files?.[0];
+        if (droppedFile) processFile(droppedFile);
     };
 
-    // ── Navigate actions ─────────────────────────────────────────────────────
+    const handleFileChange = (e) => {
+        const selected = e.target.files?.[0];
+        if (selected) processFile(selected);
+    };
+
+    const resetFile = () => {
+        setFile(null);
+        setParsedData(null);
+        setError("");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    // ── Navigation actions ────────────────────────────────────────────────────
     const handleVisualize = () => {
         if (!parsedData) return;
+        const cleanName = file.name.replace(/\.[^/.]+$/, "");
         navigate("/visualize", {
             state: {
                 manualData: parsedData.rows,
                 manualColumns: parsedData.columns,
-                datasetName: file.name.replace(/\.[^/.]+$/, ""),
+                manualRowLabels: parsedData.rows.map((_, i) => `Row ${i + 1}`),
+                datasetName: cleanName,
             },
         });
     };
 
     const handlePreview = () => {
         if (!parsedData) return;
+        const cleanName = file.name.replace(/\.[^/.]+$/, "");
         navigate("/dataset/preview", {
             state: {
                 manualData: parsedData.rows,
                 manualColumns: parsedData.columns,
-                datasetName: file.name.replace(/\.[^/.]+$/, ""),
+                datasetName: cleanName,
             },
         });
     };
 
-    const resetFile = () => {
-        setFile(null);
-        setFileInfo(null);
-        setParsedData(null);
-        setError("");
-        if (fileInputRef.current) fileInputRef.current.value = "";
-    };
+    const ext = file ? getExtension(file.name) : "";
+    const fileInfo = ACCEPTED_TYPES[ext] || { label: "FILE", color: "#64748b" };
 
-    // ── Derived ──────────────────────────────────────────────────────────────
     const numericCols = parsedData
         ? parsedData.columns.filter(col => {
             const vals = parsedData.rows.map(r => r[col]).filter(v => v !== "" && v !== undefined);
@@ -205,27 +193,26 @@ export default function UploadDataset() {
     return (
         <div className="upload-page">
             <div className="upload-container">
-
                 {/* ── Header ── */}
                 <header className="upload-header">
                     <button className="upload-back-btn" onClick={() => navigate("/dataset/create")}>
                         ← Back
                     </button>
                     <div className="upload-header-text">
-                        <div className="upload-badge">⬆ Data Import Studio</div>
+                        <div className="upload-badge">Data Import Studio</div>
                         <h1>Upload Your Dataset</h1>
                         <p>
-                            Drag & drop or browse to import your data — supports <strong>CSV, Excel (.xlsx/.xls), JSON</strong> and <strong>TSV</strong>.
-                            DataLens will parse it instantly and take you straight to the chart builder.
+                            Drag & drop or browse to import your data - supports <strong>CSV, Excel (.xlsx/.xls), JSON</strong> and <strong>TSV</strong>.
+                            DataLens parses your files locally and provides immediate chart visualization.
                         </p>
                     </div>
                 </header>
 
                 {/* ── Supported Formats Strip ── */}
                 <div className="upload-formats-strip">
-                    {Object.entries(ACCEPTED_TYPES).map(([ext, info]) => (
-                        <div key={ext} className="upload-format-chip" style={{ "--chip-color": info.color }}>
-                            <span>{info.icon}</span> {info.label} <code>{ext}</code>
+                    {Object.entries(ACCEPTED_TYPES).map(([extStr, info]) => (
+                        <div key={extStr} className="upload-format-chip" style={{ "--chip-color": info.color }}>
+                            {info.label} <code>{extStr}</code>
                         </div>
                     ))}
                 </div>
@@ -256,13 +243,16 @@ export default function UploadDataset() {
                             </div>
                         ) : isDragging ? (
                             <div className="upload-drag-state">
-                                <div className="upload-drop-icon">⬇</div>
                                 <p>Release to upload</p>
                             </div>
                         ) : (
                             <div className="upload-idle-state">
                                 <div className="upload-icon-wrap">
-                                    <span className="upload-big-icon">⬆</span>
+                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <polyline points="17 8 12 3 7 8" />
+                                        <line x1="12" y1="3" x2="12" y2="15" />
+                                    </svg>
                                 </div>
                                 <h2>Drop your file here</h2>
                                 <p>or <span className="upload-browse-link">click to browse</span> your computer</p>
@@ -277,7 +267,6 @@ export default function UploadDataset() {
                 {/* ── Error Banner ── */}
                 {error && (
                     <div className="upload-error-banner">
-                        <span className="upload-error-icon">⚠</span>
                         <div>
                             <strong>Upload Error</strong>
                             <p>{error}</p>
@@ -289,11 +278,10 @@ export default function UploadDataset() {
                 {/* ── Parsed Success Card ── */}
                 {parsedData && file && (
                     <div className="upload-success-section">
-
                         {/* File Info Bar */}
                         <div className="upload-file-bar">
                             <div className="upload-file-icon" style={{ background: fileInfo?.color + "22", borderColor: fileInfo?.color + "55" }}>
-                                <span>{fileInfo?.icon}</span>
+                                <span style={{ fontSize: "11px", fontWeight: 700 }}>{fileInfo?.label}</span>
                             </div>
                             <div className="upload-file-details">
                                 <strong>{file.name}</strong>
@@ -302,7 +290,7 @@ export default function UploadDataset() {
                                         {fileInfo?.label}
                                     </span>
                                     <span>{formatBytes(file.size)}</span>
-                                    <span>✓ {parsedData.rows.length} rows parsed</span>
+                                    <span>{parsedData.rows.length} rows parsed</span>
                                     <span>{parsedData.columns.length} columns</span>
                                     {numericCols.length > 0 && (
                                         <span>{numericCols.length} numeric</span>
@@ -337,7 +325,7 @@ export default function UploadDataset() {
                         {/* Data Preview Table */}
                         <div className="upload-preview-card">
                             <div className="upload-preview-header">
-                                <span>📋 Data Preview</span>
+                                <span>Data Preview</span>
                                 <span className="upload-preview-sub">
                                     Showing first {Math.min(parsedData.rows.length, 8)} of {parsedData.rows.length} rows
                                 </span>
@@ -361,7 +349,7 @@ export default function UploadDataset() {
                                                 <td className="upload-row-num">{i + 1}</td>
                                                 {parsedData.columns.map(col => (
                                                     <td key={col} className={numericCols.includes(col) ? "col-numeric" : ""}>
-                                                        {row[col] ?? "—"}
+                                                        {row[col] ?? "-"}
                                                     </td>
                                                 ))}
                                             </tr>
@@ -374,22 +362,21 @@ export default function UploadDataset() {
                         {/* Action Buttons */}
                         <div className="upload-action-bar">
                             <div className="upload-action-hint">
-                                🎉 Your data is ready! Choose what you'd like to do next:
+                                Dataset successfully parsed. Select your next step:
                             </div>
                             <div className="upload-action-btns">
                                 <button className="upload-visualize-btn" onClick={handleVisualize}>
-                                    📊 Visualize Data
+                                    Visualize Data
                                     <span>→ Charts & Graphs</span>
                                 </button>
                                 <button className="upload-preview-btn" onClick={handlePreview}>
-                                    🔍 Preview & Stats
+                                    Preview & Statistics
                                     <span>→ Data Quality</span>
                                 </button>
                             </div>
                         </div>
                     </div>
                 )}
-
             </div>
         </div>
     );

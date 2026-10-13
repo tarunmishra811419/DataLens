@@ -120,7 +120,7 @@ function ManualDataset() {
     const [labelDraft, setLabelDraft] = useState("");
     const labelInputRef = useRef(null);
 
-    // Editable column names — draft while typing, commit on blur/Enter
+    // Editable column names - draft while typing, commit on blur/Enter
     const [editingColName, setEditingColName] = useState(null); // original name
     const [colNameDraft, setColNameDraft] = useState("");
 
@@ -613,7 +613,7 @@ function ManualDataset() {
                 <header className="manual-header">
                     <div>
                         <div className="manual-badge">
-                            {mode === "edit" ? "✦ Editing Saved Dataset" : "✦ Manual Data Entry Studio"}
+                            {mode === "edit" ? "Editing Saved Dataset" : "Manual Data Entry Studio"}
                         </div>
                         <h1>
                             {mode === "edit"
@@ -626,7 +626,7 @@ function ManualDataset() {
                             {mode === "edit"
                                 ? "Modify columns, rows, or values. Click 'Update Dataset' when you're done to save changes back to your profile."
                                 : mode === "blank"
-                                ? "Start from scratch — define your columns, name your rows, and fill in the data exactly how you need it."
+                                ? "Start from scratch - define your columns, name your rows, and fill in the data exactly how you need it."
                                 : "Build your dataset directly in this spreadsheet grid, or paste rows seamlessly from Excel, Google Sheets, or raw CSV."}
                         </p>
                     </div>
@@ -639,7 +639,7 @@ function ManualDataset() {
                             disabled={isSaving}
                             title={isSaved ? "Saved to your profile" : "Save dataset to profile"}
                         >
-                            {isSaving ? "⏳ Saving..." : isSaved ? "✓ Saved" : datasetId ? "💾 Update Dataset" : "💾 Save Dataset"}
+                            {isSaving ? "Saving..." : isSaved ? "Saved" : datasetId ? "Update Dataset" : "Save Dataset"}
                         </button>
                         <button
                             type="button"
@@ -647,7 +647,7 @@ function ManualDataset() {
                             onClick={() => navigate("/profile")}
                             title="View your saved datasets in Profile"
                         >
-                            👤 My Profile
+                            My Profile
                         </button>
                         <button
                             type="button"
@@ -655,7 +655,7 @@ function ManualDataset() {
                             onClick={handleCreateOwn}
                             title="Start with a blank dataset"
                         >
-                            ✨ Create Your Own Dataset
+                            Create Your Own Dataset
                         </button>
                         <button
                             type="button"
@@ -671,16 +671,15 @@ function ManualDataset() {
                 {/* ─── Blank Mode Banner ─── */}
                 {mode === "blank" && (
                     <div className="blank-mode-banner">
-                        <span className="blank-mode-banner-icon">🧩</span>
                         <div>
-                            <strong>Blank Dataset Mode</strong> — Click any column header to rename it. Click a row label (left column) to rename it. Add or remove rows and columns freely.
+                            <strong>Blank Dataset Mode</strong> - Click any column header to rename it. Click a row label (left column) to rename it. Add or remove rows and columns freely.
                         </div>
                         <button
                             className="blank-mode-dismiss"
                             onClick={() => loadTemplate("sales")}
                             title="Load a sample template instead"
                         >
-                            ↩ Load a Template Instead
+                            Load a Template Instead
                         </button>
                     </div>
                 )}
@@ -691,7 +690,6 @@ function ManualDataset() {
                         <div className="dataset-name-field">
                             <label htmlFor={`${uniqueFormId}-dataset-name`}>Dataset Name</label>
                             <div className="dataset-name-input-wrap">
-                                <span className="dataset-name-icon">✎</span>
                                 <input
                                     id={`${uniqueFormId}-dataset-name`}
                                     className="dataset-name-input"
@@ -730,7 +728,6 @@ function ManualDataset() {
                     {/* Real-time stats strip */}
                     <div className="dataset-metrics-strip">
                         <div className="metric-pill">
-                            <span className="metric-pill-icon">▦</span>
                             <div className="metric-pill-content">
                                 <span>Rows</span>
                                 <strong>{rows.length}</strong>
@@ -738,7 +735,6 @@ function ManualDataset() {
                         </div>
 
                         <div className="metric-pill">
-                            <span className="metric-pill-icon">▥</span>
                             <div className="metric-pill-content">
                                 <span>Columns</span>
                                 <strong>{columns.length}</strong>
@@ -746,7 +742,6 @@ function ManualDataset() {
                         </div>
 
                         <div className="metric-pill">
-                            <span className="metric-pill-icon">⚡</span>
                             <div className="metric-pill-content">
                                 <span>Filled</span>
                                 <strong>{fillRate}%</strong>
@@ -758,35 +753,35 @@ function ManualDataset() {
                 {/* ─── Sample Templates & Quick Import Bar ─── */}
                 <section className="templates-strip">
                     <div className="templates-label">
-                        <span>⚡ Quick Templates:</span>
+                        <span>Templates:</span>
                         <div className="templates-chips">
                             <button
                                 className="template-chip"
                                 onClick={() => loadTemplate("sales")}
                                 title="Load sample Sales Revenue dataset"
                             >
-                                📈 Sales Revenue
+                                Sales Revenue
                             </button>
                             <button
                                 className="template-chip"
                                 onClick={() => loadTemplate("inventory")}
                                 title="Load sample Product Inventory dataset"
                             >
-                                📦 Inventory
+                                Inventory
                             </button>
                             <button
                                 className="template-chip"
                                 onClick={() => loadTemplate("analytics")}
                                 title="Load sample Web Growth Analytics dataset"
                             >
-                                🌐 Web Traffic
+                                Web Traffic
                             </button>
                             <button
                                 className="template-chip"
                                 onClick={() => loadTemplate("grades")}
                                 title="Load sample Student Academic dataset"
                             >
-                                🎓 Academic Scores
+                                Academic Scores
                             </button>
                         </div>
                     </div>
@@ -797,21 +792,21 @@ function ManualDataset() {
                             onClick={() => setShowPasteModal(true)}
                             title="Paste rows from Excel or CSV"
                         >
-                            📋 Paste CSV / Sheets
+                            Paste CSV / Sheets
                         </button>
                         <button
                             className="utility-btn"
                             onClick={handleExportCSV}
                             title="Download grid as CSV"
                         >
-                            ⤓ Export CSV
+                            Export CSV
                         </button>
                         <button
                             className="utility-btn danger"
                             onClick={handleClearDataset}
                             title="Clear all rows and columns in a single click"
                         >
-                            🗑 Clear Dataset
+                            Clear Dataset
                         </button>
                     </div>
                 </section>
@@ -842,7 +837,7 @@ function ManualDataset() {
                                 onClick={handleClearDataset}
                                 title="Clear all rows and columns in a single click"
                             >
-                                🗑 Clear Dataset
+                                Clear Dataset
                             </button>
                         </div>
                     </div>
@@ -851,7 +846,6 @@ function ManualDataset() {
                     <div className="manual-table-wrapper">
                         {columns.length === 0 && rows.length === 0 ? (
                             <div className="empty-dataset-view">
-                                <div className="empty-dataset-icon">🗑️</div>
                                 <h3>Dataset is Empty</h3>
                                 <p>
                                     All rows and columns have been cleared. You can start fresh with a blank grid or load a quick template.
@@ -877,7 +871,7 @@ function ManualDataset() {
                             <table className="data-entry-table">
                                 <thead>
                                     <tr>
-                                        <th className="row-number-header" title="Row label — click a row label to rename it">
+                                        <th className="row-number-header" title="Row label - click a row label to rename it">
                                             <span className="row-label-header-text">Row</span>
                                         </th>
                                         {columns.map((col) => {
@@ -941,7 +935,6 @@ function ManualDataset() {
                                                         <span className="row-label-text">
                                                             {rowLabels[rowIndex] || `Row ${rowIndex + 1}`}
                                                         </span>
-                                                        <span className="row-label-edit-icon">✎</span>
                                                     </button>
                                                 )}
                                             </td>
@@ -955,7 +948,7 @@ function ManualDataset() {
                                                         value={row[col] ?? ""}
                                                         onChange={(e) => handleCellChange(rowIndex, col, e.target.value)}
                                                         onKeyDown={(e) => handleKeyDown(e, rowIndex, colIndex)}
-                                                        placeholder="—"
+                                                        placeholder="-"
                                                     />
                                                 </td>
                                             ))}
@@ -965,7 +958,7 @@ function ManualDataset() {
                                                     onClick={() => deleteRow(rowIndex)}
                                                     title={`Delete row "${rowLabels[rowIndex] || `Row ${rowIndex + 1}`}"`}
                                                 >
-                                                    🗑
+                                                    ×
                                                 </button>
                                             </td>
                                         </tr>
@@ -1004,14 +997,14 @@ function ManualDataset() {
                                 disabled={isSaving}
                                 title={isSaved ? "Saved to your profile" : "Save dataset to profile"}
                             >
-                                {isSaving ? "⏳ Saving..." : isSaved ? "✓ Saved to Profile" : datasetId ? "💾 Update Dataset" : "💾 Save Dataset"}
+                                {isSaving ? "Saving..." : isSaved ? "Saved to Profile" : datasetId ? "Update Dataset" : "Save Dataset"}
                             </button>
                             <button
                                 type="button"
                                 className="visualize-btn"
                                 onClick={handleVisualize}
                             >
-                                📊 Visualize Data
+                                Visualize Data
                             </button>
                             <button
                                 type="button"
@@ -1071,7 +1064,6 @@ February	South	38900	285"
             {/* ─── Toast Notification for Single Click Clear with Undo & Save ─── */}
             {toastMessage && (
                 <div className="manual-dataset-toast">
-                    <span className="toast-icon">✓</span>
                     <span className="toast-text">{toastMessage}</span>
                     {savedToastAction && (
                         <button
@@ -1088,7 +1080,7 @@ February	South	38900	285"
                             className="toast-undo-btn"
                             onClick={handleUndoClear}
                         >
-                            ↩ Undo
+                            Undo
                         </button>
                     )}
                     <button

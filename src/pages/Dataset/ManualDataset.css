@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════
-   DataLens — Manual Data Entry Studio
+   DataLens - Manual Data Entry Studio
    Sleek dark obsidian, glassmorphism & micro-interactions
    ═══════════════════════════════════════════════ */
 
@@ -7,7 +7,7 @@
     min-height: 100vh;
     padding: 40px 5% 80px;
     background:
-        radial-gradient(circle at 15% 15%, rgba(124, 58, 237, 0.16), transparent 35%),
+        radial-gradient(circle at 15% 15%, rgba(37, 99, 235, 0.16), transparent 35%),
         radial-gradient(circle at 85% 85%, rgba(37, 99, 235, 0.14), transparent 40%),
         radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.05), transparent 50%),
         #08090d;
@@ -37,15 +37,15 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: #a78bfa;
+    color: #60a5fa;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 1.5px;
     text-transform: uppercase;
-    background: rgba(167, 139, 250, 0.1);
+    background: rgba(96, 165, 250, 0.1);
     padding: 4px 12px;
     border-radius: 20px;
-    border: 1px solid rgba(167, 139, 250, 0.2);
+    border: 1px solid rgba(96, 165, 250, 0.2);
     margin-bottom: 10px;
 }
 
@@ -152,8 +152,8 @@
 
 .blank-mode-dismiss:hover {
     background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(167, 139, 250, 0.3);
-    color: #c4b5fd;
+    border-color: rgba(96, 165, 250, 0.3);
+    color: #93c5fd;
 }
 
 .manual-back-btn {
@@ -174,7 +174,7 @@
 
 .manual-back-btn:hover {
     background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(167, 139, 250, 0.3);
+    border-color: rgba(96, 165, 250, 0.3);
     color: #ffffff;
     transform: translateX(-2px);
 }
@@ -214,7 +214,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: #a78bfa;
+    color: #60a5fa;
 }
 
 .dataset-name-input-wrap {
@@ -226,7 +226,7 @@
 .dataset-name-input {
     width: 100%;
     background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(139, 92, 246, 0.25);
+    border: 1px solid rgba(59, 130, 246, 0.25);
     border-radius: 10px;
     padding: 10px 14px 10px 38px;
     color: #ffffff;
@@ -236,15 +236,15 @@
 }
 
 .dataset-name-input:focus {
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
     background: rgba(15, 23, 42, 0.85);
 }
 
 .dataset-name-icon {
     position: absolute;
     left: 12px;
-    color: #a78bfa;
+    color: #60a5fa;
     font-size: 16px;
     pointer-events: none;
 }
@@ -277,8 +277,8 @@
 }
 
 .dataset-category-select:focus {
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
 /* Metrics Pill Strip */
@@ -301,7 +301,7 @@
 
 .metric-pill-icon {
     font-size: 13px;
-    color: #a78bfa;
+    color: #60a5fa;
 }
 
 .metric-pill-content {
@@ -361,9 +361,9 @@
     gap: 6px;
     padding: 6px 12px;
     border-radius: 8px;
-    background: rgba(139, 92, 246, 0.08);
-    border: 1px solid rgba(139, 92, 246, 0.2);
-    color: #c4b5fd;
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    color: #93c5fd;
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
@@ -371,8 +371,8 @@
 }
 
 .template-chip:hover {
-    background: rgba(139, 92, 246, 0.2);
-    border-color: rgba(139, 92, 246, 0.4);
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
     color: #ffffff;
     transform: translateY(-1px);
 }
@@ -472,16 +472,16 @@
 }
 
 .table-btn-primary {
-    background: linear-gradient(135deg, rgba(124, 58, 237, 0.25), rgba(79, 70, 229, 0.25));
-    border: 1px solid rgba(139, 92, 246, 0.35);
-    color: #c4b5fd;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.25), rgba(37, 99, 235, 0.25));
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    color: #93c5fd;
 }
 
 .table-btn-primary:hover {
-    background: linear-gradient(135deg, #7c3aed, #4f46e5);
-    border-color: #8b5cf6;
+    background: linear-gradient(135deg, #2563eb, #2563eb);
+    border-color: #3b82f6;
     color: #ffffff;
-    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
     transform: translateY(-1px);
 }
 
@@ -556,13 +556,13 @@
 }
 
 .empty-dataset-actions .undo-btn {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.35);
+    background: rgba(37, 99, 235, 0.15);
+    border-color: rgba(37, 99, 235, 0.35);
     color: #a5b4fc;
 }
 
 .empty-dataset-actions .undo-btn:hover {
-    background: rgba(99, 102, 241, 0.28);
+    background: rgba(37, 99, 235, 0.28);
     color: #ffffff;
 }
 
@@ -576,10 +576,10 @@
     align-items: center;
     gap: 12px;
     background: rgba(15, 23, 42, 0.95);
-    border: 1px solid rgba(139, 92, 246, 0.4);
+    border: 1px solid rgba(59, 130, 246, 0.4);
     border-radius: 12px;
     padding: 12px 18px;
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 24px rgba(124, 58, 237, 0.25);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 24px rgba(37, 99, 235, 0.25);
     backdrop-filter: blur(14px);
     animation: toastSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -608,9 +608,9 @@
 }
 
 .toast-undo-btn {
-    background: rgba(139, 92, 246, 0.2);
-    border: 1px solid rgba(139, 92, 246, 0.45);
-    color: #c4b5fd;
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.45);
+    color: #93c5fd;
     padding: 5px 12px;
     border-radius: 6px;
     font-size: 12px;
@@ -620,9 +620,9 @@
 }
 
 .toast-undo-btn:hover {
-    background: #7c3aed;
+    background: #2563eb;
     color: #ffffff;
-    border-color: #8b5cf6;
+    border-color: #3b82f6;
 }
 
 .toast-action-btn {
@@ -673,12 +673,12 @@
 }
 
 .manual-table-wrapper::-webkit-scrollbar-thumb {
-    background: rgba(167, 139, 250, 0.2);
+    background: rgba(96, 165, 250, 0.2);
     border-radius: 4px;
 }
 
 .manual-table-wrapper::-webkit-scrollbar-thumb:hover {
-    background: rgba(167, 139, 250, 0.4);
+    background: rgba(96, 165, 250, 0.4);
 }
 
 .data-entry-table {
@@ -695,7 +695,7 @@
     top: 0;
     z-index: 10;
     background: #0f131d;
-    border-bottom: 1px solid rgba(139, 92, 246, 0.25);
+    border-bottom: 1px solid rgba(59, 130, 246, 0.25);
     border-right: 1px solid rgba(255, 255, 255, 0.05);
     padding: 8px 12px;
     color: #cbd5e1;
@@ -707,7 +707,7 @@
     width: 120px;
     min-width: 100px;
     text-align: center;
-    color: #a78bfa;
+    color: #60a5fa;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.5px;
@@ -741,8 +741,8 @@
     width: 24px;
     height: 24px;
     border-radius: 6px;
-    background: rgba(139, 92, 246, 0.12);
-    color: #a78bfa;
+    background: rgba(59, 130, 246, 0.12);
+    color: #60a5fa;
     font-size: 11px;
     font-weight: 700;
     flex-shrink: 0;
@@ -767,8 +767,8 @@
 
 .column-title-input:focus {
     background: rgba(15, 23, 42, 0.85);
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
     color: #ffffff;
 }
 
@@ -841,8 +841,8 @@
 }
 
 .row-label-display:hover {
-    background: rgba(167, 139, 250, 0.1);
-    border-color: rgba(167, 139, 250, 0.25);
+    background: rgba(96, 165, 250, 0.1);
+    border-color: rgba(96, 165, 250, 0.25);
     color: #e2e8f0;
 }
 
@@ -857,7 +857,7 @@
 .row-label-edit-icon {
     opacity: 0;
     font-size: 11px;
-    color: #a78bfa;
+    color: #60a5fa;
     transition: opacity 0.15s ease;
     flex-shrink: 0;
 }
@@ -870,14 +870,14 @@
 .row-label-edit-input {
     width: 100%;
     background: rgba(15, 23, 42, 0.9);
-    border: 1px solid #8b5cf6;
+    border: 1px solid #3b82f6;
     border-radius: 6px;
     padding: 5px 8px;
     color: #ffffff;
     font-size: 11px;
     font-family: var(--font-mono, monospace);
     font-weight: 600;
-    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
     outline: none;
 }
 
@@ -899,8 +899,8 @@
 
 .data-cell-input:focus {
     background: rgba(15, 23, 42, 0.95);
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.35);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
     color: #ffffff;
 }
 
@@ -955,8 +955,8 @@
     padding: 6px 14px;
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.04);
-    border: 1px dashed rgba(167, 139, 250, 0.3);
-    color: #c4b5fd;
+    border: 1px dashed rgba(96, 165, 250, 0.3);
+    color: #93c5fd;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -964,8 +964,8 @@
 }
 
 .add-row-quick-btn:hover {
-    background: rgba(167, 139, 250, 0.1);
-    border-color: #a78bfa;
+    background: rgba(96, 165, 250, 0.1);
+    border-color: #60a5fa;
     color: #ffffff;
 }
 
@@ -1030,20 +1030,20 @@
     gap: 10px;
     padding: 13px 28px;
     border-radius: 12px;
-    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
-    border: 1px solid rgba(167, 139, 250, 0.3);
+    background: linear-gradient(135deg, #2563eb 0%, #2563eb 100%);
+    border: 1px solid rgba(96, 165, 250, 0.3);
     color: #ffffff;
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 10px 25px rgba(124, 58, 237, 0.35);
+    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
     transition: all 0.25s ease;
 }
 
 .continue-analysis-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 14px 32px rgba(124, 58, 237, 0.5);
-    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+    box-shadow: 0 14px 32px rgba(37, 99, 235, 0.5);
+    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
 }
 
 .continue-analysis-btn:active {
@@ -1092,7 +1092,7 @@
 
 .paste-modal-card {
     background: #0f131e;
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    border: 1px solid rgba(59, 130, 246, 0.3);
     border-radius: 20px;
     padding: 28px;
     width: 100%;
@@ -1153,8 +1153,8 @@
 }
 
 .paste-textarea:focus {
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
 .paste-modal-actions {
@@ -1193,21 +1193,21 @@
     gap: 8px;
     padding: 10px 18px;
     border-radius: 12px;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    border: 1px solid rgba(167, 139, 250, 0.4);
+    background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+    border: 1px solid rgba(96, 165, 250, 0.4);
     color: #ffffff;
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.25s ease;
-    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
     backdrop-filter: blur(10px);
 }
 
 .save-dataset-btn:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
-    background: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+    background: linear-gradient(135deg, #818cf8 0%, #60a5fa 100%);
 }
 
 .save-dataset-btn.saved {
@@ -1246,7 +1246,7 @@
 
 .profile-link-btn:hover {
     background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(99, 102, 241, 0.3);
+    border-color: rgba(37, 99, 235, 0.3);
     color: #ffffff;
     transform: translateY(-1px);
 }
@@ -1257,19 +1257,19 @@
     gap: 10px;
     padding: 13px 24px;
     border-radius: 12px;
-    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-    border: 1px solid rgba(167, 139, 250, 0.35);
+    background: linear-gradient(135deg, #6366f1 0%, #2563eb 100%);
+    border: 1px solid rgba(96, 165, 250, 0.35);
     color: #ffffff;
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 10px 25px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
     transition: all 0.25s ease;
 }
 
 .save-dataset-footer-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 14px 32px rgba(99, 102, 241, 0.5);
+    box-shadow: 0 14px 32px rgba(37, 99, 235, 0.5);
     background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
 }
 

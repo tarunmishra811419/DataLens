@@ -4,7 +4,7 @@
 
     background:
         radial-gradient(circle at 15% 15%,
-            rgba(124, 58, 237, 0.14),
+            rgba(37, 99, 235, 0.14),
             transparent 35%),
         radial-gradient(circle at 85% 85%,
             rgba(37, 99, 235, 0.1),
@@ -32,7 +32,7 @@
 }
 
 .preview-header>div>span {
-    color: #a78bfa;
+    color: #60a5fa;
 
     font-size: 11px;
     font-weight: 700;
@@ -71,7 +71,7 @@
 
     background: rgba(255, 255, 255, 0.04);
 
-    color: #c4b5fd;
+    color: #93c5fd;
 
     cursor: pointer;
 
@@ -84,7 +84,7 @@
 }
 
 .preview-back:hover {
-    background: rgba(124, 58, 237, 0.12);
+    background: rgba(37, 99, 235, 0.12);
 
     transform: translateY(-2px);
 }
@@ -154,7 +154,7 @@
 
     background: rgba(255, 255, 255, 0.045);
 
-    color: #a78bfa;
+    color: #60a5fa;
 
     font-size: 11px;
     font-weight: 700;
@@ -187,7 +187,7 @@
 }
 
 .table-wrapper tbody tr:hover {
-    background: rgba(124, 58, 237, 0.055);
+    background: rgba(37, 99, 235, 0.055);
 }
 
 .table-wrapper tbody tr:last-child td {
@@ -273,8 +273,8 @@
     border-radius: 9px;
 
     background: linear-gradient(135deg,
-            #7c3aed,
-            #4f46e5);
+            #2563eb,
+            #2563eb);
 
     color: white;
 
@@ -292,7 +292,7 @@
     transform: translateY(-2px);
 
     box-shadow:
-        0 10px 25px rgba(79, 70, 229, 0.3);
+        0 10px 25px rgba(37, 99, 235, 0.3);
 }
 
 /* =========================
