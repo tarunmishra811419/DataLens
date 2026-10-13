@@ -7,7 +7,7 @@
 
     background:
         radial-gradient(circle at 50% 20%,
-            rgba(124, 58, 237, 0.16),
+            rgba(37, 99, 235, 0.16),
             transparent 35%),
         #08090d;
 
@@ -47,12 +47,12 @@
 
     border-radius: 13px;
 
-    background: linear-gradient(135deg, #7c3aed, #2563eb);
+    background: linear-gradient(135deg, #2563eb, #2563eb);
 
     font-size: 22px;
     font-weight: 800;
 
-    box-shadow: 0 0 30px rgba(124, 58, 237, 0.35);
+    box-shadow: 0 0 30px rgba(37, 99, 235, 0.35);
 }
 
 .not-found-code {
@@ -66,7 +66,7 @@
     letter-spacing: -5px;
 
     background: linear-gradient(90deg,
-            #a78bfa,
+            #60a5fa,
             #60a5fa);
 
     -webkit-background-clip: text;
@@ -105,8 +105,8 @@
     color: white;
 
     background: linear-gradient(135deg,
-            #7c3aed,
-            #4f46e5);
+            #2563eb,
+            #2563eb);
 
     text-decoration: none;
 
@@ -122,7 +122,7 @@
     transform: translateY(-2px);
 
     box-shadow:
-        0 12px 30px rgba(79, 70, 229, 0.35);
+        0 12px 30px rgba(37, 99, 235, 0.35);
 }
 
 @keyframes notFoundEnter {
