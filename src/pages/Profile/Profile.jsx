@@ -77,7 +77,7 @@ export default function Profile() {
             });
             setUser(updated);
             setIsEditingProfile(false);
-            showFeedback("✓ Profile successfully saved to database!", "success");
+            showFeedback("Profile successfully saved to database.", "success");
         } catch (err) {
             showFeedback(err.message || "Failed to save profile", "error");
         } finally {
@@ -100,7 +100,7 @@ export default function Profile() {
             await changeUserPassword(pwForm.currentPassword, pwForm.newPassword);
             setIsChangingPassword(false);
             setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-            showFeedback("✓ Password successfully updated!", "success");
+            showFeedback("Password successfully updated.", "success");
         } catch (err) {
             showFeedback(err.message || "Failed to update password", "error");
         } finally {
@@ -178,7 +178,7 @@ export default function Profile() {
                     <div
                         style={{
                             padding: "12px 18px",
-                            borderRadius: "10px",
+                            borderRadius: "6px",
                             marginBottom: "20px",
                             fontWeight: 600,
                             fontSize: "14px",
@@ -205,14 +205,20 @@ export default function Profile() {
                         <div className="profile-user-info">
                             <h1>{user.name}</h1>
                             <p>{user.email}</p>
-                            <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginTop: "6px" }}>
-                                <span className="profile-badge">● {user.role || "Active Analyst"}</span>
+                            <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", marginTop: "6px" }}>
+                                <span className="profile-badge">{user.role || "Active Analyst"}</span>
                                 {user.location && (
-                                    <span style={{ fontSize: "12px", color: "#94a3b8" }}>📍 {user.location}</span>
+                                    <span style={{ fontSize: "12px", color: "#94a3b8", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                            <circle cx="12" cy="10" r="3" />
+                                        </svg>
+                                        {user.location}
+                                    </span>
                                 )}
                             </div>
                             {user.bio && (
-                                <p style={{ marginTop: "8px", fontSize: "13px", color: "#cbd5e1", fontStyle: "italic" }}>
+                                <p style={{ marginTop: "8px", fontSize: "13px", color: "#cbd5e1" }}>
                                     "{user.bio}"
                                 </p>
                             )}
@@ -228,7 +234,7 @@ export default function Profile() {
                                 setIsChangingPassword(false);
                             }}
                         >
-                            ✏ Edit Profile
+                            Edit Profile
                         </button>
                         <button
                             type="button"
@@ -238,10 +244,10 @@ export default function Profile() {
                                 setIsEditingProfile(false);
                             }}
                         >
-                            🔒 Password
+                            Change Password
                         </button>
                         <button className="profile-btn-logout" onClick={handleLogout}>
-                            ↪ Log Out
+                            Log Out
                         </button>
                     </div>
                 </section>
@@ -249,7 +255,7 @@ export default function Profile() {
                 {/* Edit Profile Panel */}
                 {isEditingProfile && (
                     <section className="profile-section" style={{ marginBottom: "28px" }}>
-                        <h3 className="profile-section-title">✏ Edit Profile Information</h3>
+                        <h3 className="profile-section-title">Edit Profile Information</h3>
                         <form onSubmit={handleSaveProfile} style={{ display: "grid", gap: "16px", marginTop: "16px" }}>
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
                                 <div>
@@ -264,9 +270,9 @@ export default function Profile() {
                                         style={{
                                             width: "100%",
                                             padding: "10px 14px",
-                                            background: "rgba(255, 255, 255, 0.05)",
-                                            border: "1px solid rgba(255, 255, 255, 0.15)",
-                                            borderRadius: "8px",
+                                            background: "#1e293b",
+                                            border: "1px solid #334155",
+                                            borderRadius: "6px",
                                             color: "#fff",
                                             fontSize: "14px",
                                         }}
@@ -284,9 +290,9 @@ export default function Profile() {
                                         style={{
                                             width: "100%",
                                             padding: "10px 14px",
-                                            background: "rgba(255, 255, 255, 0.05)",
-                                            border: "1px solid rgba(255, 255, 255, 0.15)",
-                                            borderRadius: "8px",
+                                            background: "#1e293b",
+                                            border: "1px solid #334155",
+                                            borderRadius: "6px",
                                             color: "#fff",
                                             fontSize: "14px",
                                         }}
@@ -307,9 +313,9 @@ export default function Profile() {
                                         style={{
                                             width: "100%",
                                             padding: "10px 14px",
-                                            background: "rgba(255, 255, 255, 0.05)",
-                                            border: "1px solid rgba(255, 255, 255, 0.15)",
-                                            borderRadius: "8px",
+                                            background: "#1e293b",
+                                            border: "1px solid #334155",
+                                            borderRadius: "6px",
                                             color: "#fff",
                                             fontSize: "14px",
                                         }}
@@ -327,9 +333,9 @@ export default function Profile() {
                                         style={{
                                             width: "100%",
                                             padding: "10px 14px",
-                                            background: "rgba(255, 255, 255, 0.05)",
-                                            border: "1px solid rgba(255, 255, 255, 0.15)",
-                                            borderRadius: "8px",
+                                            background: "#1e293b",
+                                            border: "1px solid #334155",
+                                            borderRadius: "6px",
                                             color: "#fff",
                                             fontSize: "14px",
                                         }}
@@ -342,11 +348,11 @@ export default function Profile() {
                                     type="submit"
                                     disabled={isSaving}
                                     style={{
-                                        background: "linear-gradient(135deg, #6366f1, #3b82f6)",
+                                        background: "#2563eb",
                                         color: "#fff",
                                         border: "none",
                                         padding: "10px 20px",
-                                        borderRadius: "8px",
+                                        borderRadius: "6px",
                                         fontWeight: 600,
                                         cursor: "pointer",
                                     }}
@@ -357,11 +363,11 @@ export default function Profile() {
                                     type="button"
                                     onClick={() => setIsEditingProfile(false)}
                                     style={{
-                                        background: "rgba(255, 255, 255, 0.08)",
+                                        background: "transparent",
                                         color: "#cbd5e1",
-                                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                                        border: "1px solid #334155",
                                         padding: "10px 16px",
-                                        borderRadius: "8px",
+                                        borderRadius: "6px",
                                         cursor: "pointer",
                                     }}
                                 >
@@ -375,7 +381,7 @@ export default function Profile() {
                 {/* Change Password Panel */}
                 {isChangingPassword && (
                     <section className="profile-section" style={{ marginBottom: "28px" }}>
-                        <h3 className="profile-section-title">🔒 Change Account Password</h3>
+                        <h3 className="profile-section-title">Change Account Password</h3>
                         <form onSubmit={handleChangePassword} style={{ display: "grid", gap: "16px", maxWidth: "480px", marginTop: "16px" }}>
                             <div>
                                 <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#94a3b8", marginBottom: "6px" }}>
@@ -389,9 +395,9 @@ export default function Profile() {
                                     style={{
                                         width: "100%",
                                         padding: "10px 14px",
-                                        background: "rgba(255, 255, 255, 0.05)",
-                                        border: "1px solid rgba(255, 255, 255, 0.15)",
-                                        borderRadius: "8px",
+                                        background: "#1e293b",
+                                        border: "1px solid #334155",
+                                        borderRadius: "6px",
                                         color: "#fff",
                                         fontSize: "14px",
                                     }}
@@ -409,9 +415,9 @@ export default function Profile() {
                                     style={{
                                         width: "100%",
                                         padding: "10px 14px",
-                                        background: "rgba(255, 255, 255, 0.05)",
-                                        border: "1px solid rgba(255, 255, 255, 0.15)",
-                                        borderRadius: "8px",
+                                        background: "#1e293b",
+                                        border: "1px solid #334155",
+                                        borderRadius: "6px",
                                         color: "#fff",
                                         fontSize: "14px",
                                     }}
@@ -429,9 +435,9 @@ export default function Profile() {
                                     style={{
                                         width: "100%",
                                         padding: "10px 14px",
-                                        background: "rgba(255, 255, 255, 0.05)",
-                                        border: "1px solid rgba(255, 255, 255, 0.15)",
-                                        borderRadius: "8px",
+                                        background: "#1e293b",
+                                        border: "1px solid #334155",
+                                        borderRadius: "6px",
                                         color: "#fff",
                                         fontSize: "14px",
                                     }}
@@ -443,11 +449,11 @@ export default function Profile() {
                                     type="submit"
                                     disabled={isSaving}
                                     style={{
-                                        background: "linear-gradient(135deg, #10b981, #059669)",
+                                        background: "#10b981",
                                         color: "#fff",
                                         border: "none",
                                         padding: "10px 20px",
-                                        borderRadius: "8px",
+                                        borderRadius: "6px",
                                         fontWeight: 600,
                                         cursor: "pointer",
                                     }}
@@ -458,11 +464,11 @@ export default function Profile() {
                                     type="button"
                                     onClick={() => setIsChangingPassword(false)}
                                     style={{
-                                        background: "rgba(255, 255, 255, 0.08)",
+                                        background: "transparent",
                                         color: "#cbd5e1",
-                                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                                        border: "1px solid #334155",
                                         padding: "10px 16px",
-                                        borderRadius: "8px",
+                                        borderRadius: "6px",
                                         cursor: "pointer",
                                     }}
                                 >
@@ -484,12 +490,12 @@ export default function Profile() {
                         <strong>{stats.totalRows.toLocaleString()}</strong>
                     </div>
                     <div className="profile-stat-box">
-                        <span>Visualizations Exported</span>
-                        <strong>48</strong>
+                        <span>Indexed Data Cells</span>
+                        <strong>{stats.totalCells.toLocaleString()}</strong>
                     </div>
                     <div className="profile-stat-box">
-                        <span>Active Streak</span>
-                        <strong style={{ color: "#34d399" }}>14 Days 🔥</strong>
+                        <span>Active Categories</span>
+                        <strong>{Math.max(1, categories.length - 1)}</strong>
                     </div>
                 </section>
 
@@ -497,7 +503,7 @@ export default function Profile() {
                 <section className="profile-datasets-section">
                     <div className="profile-datasets-header">
                         <div className="profile-datasets-title-wrap">
-                            <h2 className="profile-datasets-title">📁 My Saved Datasets</h2>
+                            <h2 className="profile-datasets-title">My Saved Datasets</h2>
                             <span className="profile-count-pill">{datasets.length} Total</span>
                         </div>
                         <button
@@ -528,11 +534,17 @@ export default function Profile() {
                     {/* Datasets Grid or Empty State */}
                     {filteredDatasets.length === 0 ? (
                         <div className="profile-empty-datasets">
-                            <div className="profile-empty-datasets-icon">📊</div>
+                            <div className="profile-empty-datasets-icon">
+                                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="20" x2="18" y2="10" />
+                                    <line x1="12" y1="20" x2="12" y2="4" />
+                                    <line x1="6" y1="20" x2="6" y2="14" />
+                                </svg>
+                            </div>
                             <h4>No datasets found</h4>
                             <p>
                                 {datasets.length === 0
-                                    ? "You haven't saved any datasets yet. Create one manually or import spreadsheet rows to build your collection."
+                                    ? "You have not saved any datasets yet. Create one manually or import spreadsheet rows to build your collection."
                                     : `No datasets found matching category "${filterCategory}".`}
                             </p>
                             <button
@@ -562,7 +574,10 @@ export default function Profile() {
                                                 onClick={() => handleDeleteDataset(dsId, ds.name)}
                                                 title="Delete dataset"
                                             >
-                                                🗑
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <polyline points="3 6 5 6 21 6" />
+                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                                </svg>
                                             </button>
                                         </div>
 
@@ -592,7 +607,7 @@ export default function Profile() {
                                                     onClick={() => handleEditDataset(ds)}
                                                     title="Edit in spreadsheet editor"
                                                 >
-                                                    ✏ Edit
+                                                    Edit
                                                 </button>
                                                 <button
                                                     type="button"
@@ -600,7 +615,7 @@ export default function Profile() {
                                                     onClick={() => handleVisualizeDataset(ds)}
                                                     title="Visualize charts"
                                                 >
-                                                    📊 Visualize
+                                                    Visualize
                                                 </button>
                                             </div>
                                         </div>
@@ -613,12 +628,12 @@ export default function Profile() {
 
                 {/* Workspace Preferences */}
                 <section className="profile-section">
-                    <h3 className="profile-section-title">⚙ Workspace Preferences</h3>
+                    <h3 className="profile-section-title">Workspace Preferences</h3>
 
                     <div className="profile-pref-row">
                         <div className="profile-pref-info">
                             <h4>Insight Engine Notifications</h4>
-                            <p>Receive proactive notifications when anomaly spikes or streak milestones occur.</p>
+                            <p>Receive proactive notifications when anomaly spikes or milestones occur.</p>
                         </div>
                         <button
                             type="button"
@@ -628,13 +643,13 @@ export default function Profile() {
                                 border: `1px solid ${notifications ? "#10b981" : "rgba(255, 255, 255, 0.2)"}`,
                                 color: notifications ? "#34d399" : "#94a3b8",
                                 padding: "6px 14px",
-                                borderRadius: "8px",
+                                borderRadius: "6px",
                                 cursor: "pointer",
                                 fontWeight: 600,
                                 fontSize: "12px",
                             }}
                         >
-                            {notifications ? "Enabled ✓" : "Disabled"}
+                            {notifications ? "Enabled" : "Disabled"}
                         </button>
                     </div>
 
@@ -651,13 +666,13 @@ export default function Profile() {
                                 border: `1px solid ${autoSave ? "#10b981" : "rgba(255, 255, 255, 0.2)"}`,
                                 color: autoSave ? "#34d399" : "#94a3b8",
                                 padding: "6px 14px",
-                                borderRadius: "8px",
+                                borderRadius: "6px",
                                 cursor: "pointer",
                                 fontWeight: 600,
                                 fontSize: "12px",
                             }}
                         >
-                            {autoSave ? "Enabled ✓" : "Disabled"}
+                            {autoSave ? "Enabled" : "Disabled"}
                         </button>
                     </div>
 
@@ -674,13 +689,13 @@ export default function Profile() {
                                 border: `1px solid ${highContrast ? "#10b981" : "rgba(255, 255, 255, 0.2)"}`,
                                 color: highContrast ? "#34d399" : "#94a3b8",
                                 padding: "6px 14px",
-                                borderRadius: "8px",
+                                borderRadius: "6px",
                                 cursor: "pointer",
                                 fontWeight: 600,
                                 fontSize: "12px",
                             }}
                         >
-                            {highContrast ? "Enabled ✓" : "Disabled"}
+                            {highContrast ? "Enabled" : "Disabled"}
                         </button>
                     </div>
                 </section>
