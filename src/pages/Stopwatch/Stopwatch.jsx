@@ -10,10 +10,14 @@ import {
     clearAllSessions,
     getTodayKey,
 } from "../../services/stopwatchService";
+import { getAuthSession } from "../../services/authService";
 import "./Stopwatch.css";
 
 function Stopwatch() {
     const navigate = useNavigate();
+    const session = getAuthSession();
+    const user = session?.user;
+    const userInitial = user?.name ? user.name.charAt(0).toUpperCase() : "A";
 
     // ── Timer state ──────────────────────────────────────────────────────────
     const [running, setRunning] = useState(false);
@@ -60,20 +64,19 @@ function Stopwatch() {
             clearInterval(intervalRef.current);
         }
         return () => clearInterval(intervalRef.current);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [running]);
+    }, [running, elapsed]);
 
     // ── Controls ─────────────────────────────────────────────────────────────
     const handleStart = () => {
         setRunning(true);
-        showToast("⏱ Timer started", "info");
+        showToast("Timer started", "info");
     };
 
     const handleStop = () => {
         setRunning(false);
         if (elapsed > 0) {
             addSecondsToDay(elapsed);
-            showToast(`✅ Saved ${formatShort(elapsed)} to today's log`, "success");
+            showToast(`Saved ${formatShort(elapsed)} to today's log`, "success");
             setElapsed(0);
         }
     };
@@ -88,7 +91,7 @@ function Stopwatch() {
             message: `Clear all tracked time for today (${formatShort(todayTotal)})?`,
             onConfirm: () => {
                 clearDay(getTodayKey());
-                showToast("🗑 Today's log cleared", "info");
+                showToast("Today's log cleared", "info");
                 setConfirm(null);
             },
         });
@@ -96,10 +99,10 @@ function Stopwatch() {
 
     const handleClearAll = () => {
         setConfirm({
-            message: "Clear ALL daily records? This cannot be undone.",
+            message: "Clear all daily records? This action cannot be undone.",
             onConfirm: () => {
                 clearAllSessions();
-                showToast("🗑 All records cleared", "info");
+                showToast("All records cleared", "info");
                 setConfirm(null);
             },
         });
@@ -134,25 +137,56 @@ function Stopwatch() {
 
                 <nav className="sw-nav">
                     <Link to="/dashboard" className="sw-nav-item">
-                        <span>⌂</span> Dashboard
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="7" height="7" />
+                            <rect x="14" y="3" width="7" height="7" />
+                            <rect x="14" y="14" width="7" height="7" />
+                            <rect x="3" y="14" width="7" height="7" />
+                        </svg>
+                        Dashboard
                     </Link>
                     <Link to="/dataset/create" className="sw-nav-item">
-                        <span>＋</span> Datasets
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="12" y1="18" x2="12" y2="12" />
+                            <line x1="9" y1="15" x2="15" y2="15" />
+                        </svg>
+                        Datasets
                     </Link>
                     <Link to="/compare" className="sw-nav-item">
-                        <span>⇄</span> Compare
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="16 3 21 3 21 8" />
+                            <line x1="4" y1="20" x2="21" y2="3" />
+                            <polyline points="21 16 21 21 16 21" />
+                            <line x1="15" y1="15" x2="21" y2="21" />
+                            <line x1="4" y1="4" x2="9" y2="9" />
+                        </svg>
+                        Compare
                     </Link>
                     <Link to="/stopwatch" className="sw-nav-item active">
-                        <span>⏱</span> Time Tracker
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                        Time Tracker
                     </Link>
                     <Link to="/profile" className="sw-nav-item">
-                        <span>◎</span> Profile
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                        </svg>
+                        Profile
                     </Link>
                 </nav>
 
                 <div className="sw-sidebar-bottom">
-                    <button className="sw-sidebar-btn" onClick={() => navigate("/profile")}>
-                        ⚙ Settings
+                    <button className="sw-sidebar-btn" onClick={() => navigate(user ? "/profile" : "/login")}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: "8px", verticalAlign: "middle" }}>
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                        </svg>
+                        Settings
                     </button>
                 </div>
             </aside>
@@ -162,7 +196,7 @@ function Stopwatch() {
                 {/* Header */}
                 <header className="sw-header">
                     <div>
-                        <span className="sw-header-sub">Productivity</span>
+                        <span className="sw-header-sub">Productivity Log</span>
                         <h1>Time Tracker</h1>
                     </div>
                     <div className="sw-header-actions">
@@ -175,8 +209,8 @@ function Stopwatch() {
                             <option value={14}>Last 14 days</option>
                             <option value={30}>Last 30 days</option>
                         </select>
-                        <Link to="/profile" className="sw-profile-link">
-                            <div className="sw-avatar">T</div>
+                        <Link to={user ? "/profile" : "/login"} className="sw-profile-link">
+                            <div className="sw-avatar">{userInitial}</div>
                         </Link>
                     </div>
                 </header>
@@ -197,7 +231,7 @@ function Stopwatch() {
                                     className="sw-btn sw-btn-start"
                                     onClick={handleStart}
                                 >
-                                    ▶ Start
+                                    Start Session
                                 </button>
                             ) : (
                                 <button
@@ -205,7 +239,7 @@ function Stopwatch() {
                                     className="sw-btn sw-btn-stop"
                                     onClick={handleStop}
                                 >
-                                    ⏹ Stop & Save
+                                    Stop & Save
                                 </button>
                             )}
                             <button
@@ -214,20 +248,20 @@ function Stopwatch() {
                                 onClick={handleReset}
                                 disabled={running}
                             >
-                                ↺ Reset
+                                Reset
                             </button>
                         </div>
 
                         <p className="sw-timer-hint">
                             {running
-                                ? "Timer is running — click Stop & Save to log this session"
-                                : "Press Start to begin a new session"}
+                                ? "Timer is running: click Stop & Save to log this session"
+                                : "Click Start Session to begin tracking work"}
                         </p>
                     </div>
 
                     {/* Today's Ring + Stats */}
                     <div className="sw-today-card">
-                        <div className="sw-today-label">Today's Progress</div>
+                        <div className="sw-today-label">Today's Total</div>
                         <div className="sw-ring-wrapper">
                             <svg viewBox="0 0 120 120" className="sw-ring-svg">
                                 <circle
@@ -259,7 +293,7 @@ function Stopwatch() {
                                 className="sw-btn-ghost sw-btn-danger"
                                 onClick={handleClearToday}
                             >
-                                🗑 Clear Today
+                                Clear Today
                             </button>
                             <button
                                 id="sw-clear-all-btn"
@@ -274,33 +308,59 @@ function Stopwatch() {
                     {/* Quick Stats */}
                     <div className="sw-stats-col">
                         <div className="sw-stat-card">
-                            <span className="sw-stat-icon">📅</span>
+                            <div className="sw-stat-icon-wrap">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                    <line x1="16" y1="2" x2="16" y2="6" />
+                                    <line x1="8" y1="2" x2="8" y2="6" />
+                                    <line x1="3" y1="10" x2="21" y2="10" />
+                                </svg>
+                            </div>
                             <div>
                                 <strong>{activeDays}</strong>
                                 <small>Active days in range</small>
                             </div>
                         </div>
+
                         <div className="sw-stat-card">
-                            <span className="sw-stat-icon">⏳</span>
+                            <div className="sw-stat-icon-wrap">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <polyline points="12 6 12 12 16 14" />
+                                </svg>
+                            </div>
                             <div>
                                 <strong>{formatShort(totalTracked)}</strong>
-                                <small>Total tracked</small>
+                                <small>Total time recorded</small>
                             </div>
                         </div>
+
                         <div className="sw-stat-card">
-                            <span className="sw-stat-icon">📊</span>
+                            <div className="sw-stat-icon-wrap">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="20" x2="18" y2="10" />
+                                    <line x1="12" y1="20" x2="12" y2="4" />
+                                    <line x1="6" y1="20" x2="6" y2="14" />
+                                </svg>
+                            </div>
                             <div>
                                 <strong>{formatShort(avgPerDay)}</strong>
-                                <small>Avg per active day</small>
+                                <small>Daily active average</small>
                             </div>
                         </div>
+
                         <div className="sw-stat-card">
-                            <span className="sw-stat-icon">🏆</span>
+                            <div className="sw-stat-icon-wrap">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                                    <polyline points="17 6 23 6 23 12" />
+                                </svg>
+                            </div>
                             <div>
                                 <strong>
                                     {formatShort(Math.max(...days.map((d) => d.seconds)))}
                                 </strong>
-                                <small>Best day in range</small>
+                                <small>Peak session day</small>
                             </div>
                         </div>
                     </div>
@@ -310,7 +370,7 @@ function Stopwatch() {
                 <section className="sw-chart-card">
                     <div className="sw-chart-header">
                         <div>
-                            <span className="sw-chart-sub">Daily Progress</span>
+                            <span className="sw-chart-sub">Daily Distribution</span>
                             <h2 className="sw-chart-title">Time Tracked per Day</h2>
                         </div>
                         <div className="sw-chart-legend">
@@ -395,7 +455,7 @@ function Stopwatch() {
                                 className="sw-btn sw-btn-stop"
                                 onClick={confirm.onConfirm}
                             >
-                                Yes, Clear
+                                Confirm Clear
                             </button>
                             <button
                                 className="sw-btn-ghost"

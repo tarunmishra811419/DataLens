@@ -375,7 +375,7 @@ export default function Visualize() {
                     if (blob) saveAs(blob, `${filename}.jpg`);
                 }, "image/jpeg", 0.92);
             } else if (downloadFmt === "svg") {
-                // SVG fallback — export as PNG with message
+                // SVG fallback - export as PNG with message
                 canvas.toBlob(blob => {
                     if (blob) saveAs(blob, `${filename}.png`);
                 }, "image/png");
@@ -412,7 +412,13 @@ export default function Visualize() {
         return (
             <div className="viz-page">
                 <div className="viz-empty">
-                    <div className="viz-empty-icon">📊</div>
+                    <div className="viz-empty-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10" />
+                            <line x1="12" y1="20" x2="12" y2="4" />
+                            <line x1="6" y1="20" x2="6" y2="14" />
+                        </svg>
+                    </div>
                     <h1>No Data to Visualize</h1>
                     <p>Go back and enter some data or upload a dataset first.</p>
                     <div className="viz-empty-btns">
@@ -438,7 +444,7 @@ export default function Visualize() {
                 <div className="viz-topbar-left">
                     <button className="viz-back-btn" onClick={() => navigate(-1)}>← Back</button>
                     <div className="viz-topbar-info">
-                        <span className="viz-badge">📊 Visualization Studio</span>
+                        <span className="viz-badge">Visualization Studio</span>
                         <h1 className="viz-title">{datasetName}</h1>
                         <span className="viz-meta">{data.length} rows · {columns.length} columns</span>
                     </div>
@@ -657,7 +663,7 @@ export default function Visualize() {
                     {/* Data summary table below chart */}
                     <div className="viz-data-table-section">
                         <div className="viz-data-table-header">
-                            <span className="viz-data-table-title">📋 Dataset Preview</span>
+                            <span className="viz-data-table-title">Dataset Preview</span>
                             <span className="viz-data-table-sub">Showing first {Math.min(data.length, 6)} of {data.length} rows</span>
                         </div>
                         <div className="viz-data-table-scroll">
@@ -677,7 +683,7 @@ export default function Visualize() {
                                         <tr key={i}>
                                             {columns.map(col => (
                                                 <td key={col} className={yAxes.includes(col) ? "viz-col-active" : ""}>
-                                                    {row[col] ?? "—"}
+                                                    {row[col] ?? "-"}
                                                 </td>
                                             ))}
                                         </tr>
