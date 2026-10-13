@@ -1,15 +1,15 @@
+/* ===================================================
+   DataLens - Register Page Styles
+   Enterprise slate + tech-blue aesthetic
+   =================================================== */
+
 .register-page {
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 30px;
-
-    background:
-        radial-gradient(circle at 20% 20%, rgba(124, 58, 237, 0.15), transparent 35%),
-        radial-gradient(circle at 80% 80%, rgba(37, 99, 235, 0.12), transparent 35%),
-        #08090d;
-
+    background-color: #090d16;
     color: #f5f7fb;
 }
 
@@ -17,44 +17,33 @@
     width: 100%;
     max-width: 430px;
     padding: 38px;
-
-    background: rgba(255, 255, 255, 0.055);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 22px;
-
-    backdrop-filter: blur(20px);
-
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
-
-    animation: registerEnter 0.7s ease forwards;
+    background: #0c101c;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+    animation: registerEnter 0.4s ease forwards;
 }
 
 .register-brand {
     display: flex;
     align-items: center;
     gap: 10px;
-
     margin-bottom: 35px;
-
     font-size: 20px;
     font-weight: 700;
 }
 
 .register-logo {
-    width: 38px;
-    height: 38px;
-
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-
-    border-radius: 10px;
-
-    background: linear-gradient(135deg, #7c3aed, #2563eb);
-
+    border-radius: 8px;
+    background: #2563eb;
     font-weight: 800;
-
-    box-shadow: 0 0 25px rgba(124, 58, 237, 0.35);
+    color: #ffffff;
+    font-size: 18px;
 }
 
 .register-heading {
@@ -62,15 +51,14 @@
 }
 
 .register-heading h1 {
-    font-size: 32px;
-    letter-spacing: -1px;
+    font-size: 28px;
+    letter-spacing: -0.5px;
+    color: #ffffff;
 }
 
 .register-heading p {
     margin-top: 8px;
-
     color: #9ca3af;
-
     font-size: 14px;
     line-height: 1.5;
 }
@@ -89,29 +77,22 @@
 
 .register-form .form-group label {
     color: #d1d5db;
-
     font-size: 13px;
     font-weight: 600;
 }
 
 .register-form .form-group input {
     width: 100%;
-    padding: 13px 14px;
-
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-
+    padding: 11px 14px;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
     outline: none;
-
-    background: rgba(255, 255, 255, 0.045);
+    background: #0f172a;
     color: #ffffff;
-
     font-size: 14px;
-
     transition:
-        border-color 0.25s ease,
-        box-shadow 0.25s ease,
-        background 0.25s ease;
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
 }
 
 .register-form .form-group input::placeholder {
@@ -119,41 +100,31 @@
 }
 
 .register-form .form-group input:focus {
-    border-color: rgba(129, 140, 248, 0.8);
-
-    background: rgba(255, 255, 255, 0.065);
-
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 .register-submit {
     width: 100%;
     margin-top: 5px;
-
-    padding: 14px;
-
+    padding: 12px;
     border: none;
-    border-radius: 10px;
-
+    border-radius: 8px;
     cursor: pointer;
-
     color: white;
-
-    background: linear-gradient(135deg, #7c3aed, #4f46e5);
-
+    background: #2563eb;
     font-size: 14px;
     font-weight: 700;
-
     transition:
-        transform 0.25s ease,
-        box-shadow 0.25s ease;
+        background 0.2s ease,
+        transform 0.15s ease,
+        box-shadow 0.2s ease;
 }
 
 .register-submit:hover {
-    transform: translateY(-2px);
-
-    box-shadow:
-        0 12px 30px rgba(79, 70, 229, 0.35);
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
 }
 
 .register-submit:active {
@@ -162,19 +133,14 @@
 
 .register-footer {
     margin-top: 25px;
-
     text-align: center;
-
     color: #9ca3af;
-
     font-size: 13px;
 }
 
 .register-footer a {
-    color: #a78bfa;
-
+    color: #60a5fa;
     text-decoration: none;
-
     font-weight: 600;
 }
 
@@ -185,12 +151,12 @@
 @keyframes registerEnter {
     from {
         opacity: 0;
-        transform: translateY(25px) scale(0.97);
+        transform: translateY(16px);
     }
 
     to {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: translateY(0);
     }
 }
 
@@ -204,6 +170,6 @@
     }
 
     .register-heading h1 {
-        font-size: 28px;
+        font-size: 24px;
     }
 }

@@ -8,8 +8,7 @@ import {
     AlertCircle,
     Loader2,
     RefreshCw,
-    ShieldCheck,
-    KeyRound
+    ShieldCheck
 } from "lucide-react";
 import { validateEmail } from "../../utils/validators";
 import { requestPasswordReset } from "../../services/authService";
@@ -114,9 +113,8 @@ function ForgotPassword() {
                             </div>
                             <span className="forgot-brand-text">DataLens</span>
                         </Link>
-                        <div className="forgot-pill">
-                            <KeyRound size={13} className="forgot-pill-icon" />
-                            <span>Account Recovery</span>
+                        <div className="forgot-tag">
+                            Account Recovery
                         </div>
                     </div>
 

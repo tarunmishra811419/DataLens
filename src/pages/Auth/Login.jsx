@@ -7,10 +7,10 @@ import {
     EyeOff,
     ArrowRight,
     ArrowLeft,
-    Sparkles,
     AlertCircle,
     CheckCircle2,
-    Loader2
+    Loader2,
+    Info
 } from "lucide-react";
 import { validateLoginForm } from "../../utils/validators";
 import { loginUser } from "../../services/authService";
@@ -116,9 +116,8 @@ function Login() {
                             </div>
                             <span className="login-brand-text">DataLens</span>
                         </Link>
-                        <div className="login-pill">
-                            <Sparkles size={13} className="login-pill-icon" />
-                            <span>Analytics Studio</span>
+                        <div className="login-tag">
+                            Analytics Studio
                         </div>
                     </div>
 
@@ -133,7 +132,7 @@ function Login() {
                         <div className={`login-alert alert-${statusMessage.type}`}>
                             {statusMessage.type === "error" && <AlertCircle size={18} className="alert-icon" />}
                             {statusMessage.type === "success" && <CheckCircle2 size={18} className="alert-icon" />}
-                            {statusMessage.type === "info" && <Sparkles size={18} className="alert-icon" />}
+                            {statusMessage.type === "info" && <Info size={18} className="alert-icon" />}
                             <span>{statusMessage.text}</span>
                         </div>
                     )}
@@ -241,7 +240,6 @@ function Login() {
                             onClick={handleFillDemo}
                             disabled={isLoading}
                         >
-                            <Sparkles size={15} />
                             <span>Prefill Demo Credentials (analyst@datalens.io)</span>
                         </button>
                     </div>
