@@ -25,6 +25,7 @@ export const registerUser = async (req, res) => {
             email,
             password,
             role: role || "Data Analyst",
+            authProvider: "local",
         });
 
         res.status(201).json({
@@ -36,6 +37,7 @@ export const registerUser = async (req, res) => {
             location: user.location || "",
             phone: user.phone || "",
             avatar: user.avatar || "",
+            authProvider: user.authProvider,
             token: generateToken(user._id),
         });
     } catch (error) {
@@ -56,9 +58,71 @@ export const loginUser = async (req, res) => {
 
         const user = await User.findOne({ email }).select("+password");
 
-        if (!user || !(await user.comparePassword(password))) {
+        if (!user) {
+            return res.status(401).json({ message: "Invalid email or password" });
+        }
+
+        // If account was created with Google, block email/password login
+        if (user.authProvider === "google" && !user.password) {
             return res.status(401).json({
-                message: "Invalid email or password",
+                message: "This account uses Google sign-in. Please sign in with Google.",
+            });
+        }
+
+        if (!(await user.comparePassword(password))) {
+            return res.status(401).json({ message: "Invalid email or password" });
+        }
+
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            bio: user.bio || "",
+            location: user.location || "",
+            phone: user.phone || "",
+            avatar: user.avatar || "",
+            authProvider: user.authProvider,
+            token: generateToken(user._id),
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/**
+ * Google OAuth - called from frontend with Firebase user info.
+ * Finds existing user by email or creates a new one.
+ * Returns our own JWT so the rest of the app works identically.
+ */
+export const googleAuth = async (req, res) => {
+    try {
+        const { name, email, googleId, avatar } = req.body;
+
+        if (!email || !name) {
+            return res.status(400).json({ message: "Google sign-in data incomplete" });
+        }
+
+        // Find existing user
+        let user = await User.findOne({ email });
+
+        if (user) {
+            // Update Google info if they previously had a local account
+            if (!user.googleId) {
+                user.googleId = googleId || "";
+                user.authProvider = "google";
+                if (avatar && !user.avatar) user.avatar = avatar;
+                await user.save();
+            }
+        } else {
+            // Create new Google user (no password)
+            user = await User.create({
+                name,
+                email,
+                googleId: googleId || "",
+                avatar: avatar || "",
+                authProvider: "google",
+                role: "Data Analyst",
             });
         }
 
@@ -71,6 +135,7 @@ export const loginUser = async (req, res) => {
             location: user.location || "",
             phone: user.phone || "",
             avatar: user.avatar || "",
+            authProvider: user.authProvider,
             token: generateToken(user._id),
         });
     } catch (error) {
@@ -89,6 +154,7 @@ export const getMe = async (req, res) => {
         location: req.user.location || "",
         phone: req.user.phone || "",
         avatar: req.user.avatar || "",
+        authProvider: req.user.authProvider || "local",
         createdAt: req.user.createdAt,
     });
 };
@@ -122,6 +188,7 @@ export const updateProfile = async (req, res) => {
             location: updatedUser.location,
             phone: updatedUser.phone,
             avatar: updatedUser.avatar,
+            authProvider: updatedUser.authProvider,
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -147,7 +214,17 @@ export const updatePassword = async (req, res) => {
 
         const user = await User.findById(req.user._id).select("+password");
 
-        if (!user || !(await user.comparePassword(currentPassword))) {
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        if (user.authProvider === "google" && !user.password) {
+            return res.status(400).json({
+                message: "Google accounts do not have a password to update",
+            });
+        }
+
+        if (!(await user.comparePassword(currentPassword))) {
             return res.status(401).json({
                 message: "Current password is incorrect",
             });

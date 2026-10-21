@@ -2,6 +2,7 @@ import express from "express";
 import {
     registerUser,
     loginUser,
+    googleAuth,
     getMe,
     updateProfile,
     updatePassword,
@@ -12,6 +13,7 @@ const router = express.Router();
 
 router.post("/register", registerUser);
 router.post("/login", loginUser);
+router.post("/google", googleAuth);          // Firebase Google sign-in
 router.get("/me", protect, getMe);
 router.put("/profile", protect, updateProfile);
 router.put("/password", protect, updatePassword);
