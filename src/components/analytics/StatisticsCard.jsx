@@ -6,18 +6,17 @@ export default function StatisticsCard({
     title,
     value,
     subtitle,
-    icon = "📊",
+    icon,
     trend, // e.g. "+12.4%", "-3.2%"
     trendType = "positive", // "positive" | "negative" | "neutral"
 }) {
     return (
         <div
             style={{
-                background: "rgba(255, 255, 255, 0.035)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
-                borderRadius: "14px",
+                background: "#0f172a",
+                border: "1px solid #1e293b",
+                borderRadius: "8px",
                 padding: "18px 20px",
-                backdropFilter: "blur(10px)",
                 display: "flex",
                 flexDirection: "column",
                 gap: "8px",
@@ -33,10 +32,18 @@ export default function StatisticsCard({
                 <span style={{ fontSize: "12px", fontWeight: 600, color: "#94a3b8" }}>
                     {title}
                 </span>
-                <span style={{ fontSize: "18px" }}>{icon}</span>
+                <span style={{ display: "flex", alignItems: "center" }}>
+                    {icon || (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10" />
+                            <line x1="12" y1="20" x2="12" y2="4" />
+                            <line x1="6" y1="20" x2="6" y2="14" />
+                        </svg>
+                    )}
+                </span>
             </div>
 
-            <div style={{ fontSize: "24px", fontWeight: 800, color: "#f8fafc" }}>
+            <div style={{ fontSize: "24px", fontWeight: 700, color: "#f8fafc" }}>
                 {value}
             </div>
 
@@ -64,7 +71,11 @@ export default function StatisticsCard({
                             {trend}
                         </span>
                     )}
-                    {subtitle && <span style={{ color: "#64748b" }}>{subtitle}</span>}
+                    {subtitle && (
+                        <span style={{ color: "#64748b", fontWeight: 400 }}>
+                            {subtitle}
+                        </span>
+                    )}
                 </div>
             )}
         </div>

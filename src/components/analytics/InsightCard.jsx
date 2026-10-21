@@ -11,30 +11,57 @@ export default function InsightCard({
     timestamp,
 }) {
     const priorityColors = {
-        high: { bg: "rgba(239, 68, 68, 0.15)", text: "#f87171", border: "rgba(239, 68, 68, 0.3)" },
-        medium: { bg: "rgba(245, 158, 11, 0.15)", text: "#fbbf24", border: "rgba(245, 158, 11, 0.3)" },
-        low: { bg: "rgba(99, 102, 241, 0.15)", text: "#818cf8", border: "rgba(99, 102, 241, 0.3)" },
+        high: { bg: "rgba(239, 68, 68, 0.12)", text: "#f87171", border: "rgba(239, 68, 68, 0.25)" },
+        medium: { bg: "rgba(245, 158, 11, 0.12)", text: "#fbbf24", border: "rgba(245, 158, 11, 0.25)" },
+        low: { bg: "rgba(37, 99, 235, 0.12)", text: "#60a5fa", border: "rgba(37, 99, 235, 0.25)" },
     };
 
-    const defaultIcons = {
-        trend: "📈",
-        anomaly: "⚠️",
-        streak: "🔥",
-        goal: "🎯",
-        general: "💡",
+    const renderTypeIcon = () => {
+        if (icon) return icon;
+        switch (type) {
+            case "trend":
+                return (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                        <polyline points="17 6 23 6 23 12" />
+                    </svg>
+                );
+            case "anomaly":
+                return (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                );
+            case "streak":
+            case "goal":
+                return (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 14 14" />
+                    </svg>
+                );
+            default:
+                return (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                );
+        }
     };
 
     const pri = priorityColors[priority] || priorityColors.medium;
-    const displayIcon = icon || defaultIcons[type] || "✦";
 
     return (
         <div
             style={{
-                background: "rgba(255, 255, 255, 0.035)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
-                borderRadius: "14px",
-                padding: "18px 20px",
-                backdropFilter: "blur(10px)",
+                background: "#0f172a",
+                border: "1px solid #1e293b",
+                borderRadius: "8px",
+                padding: "16px 18px",
                 display: "flex",
                 gap: "14px",
                 alignItems: "flex-start",
@@ -42,18 +69,17 @@ export default function InsightCard({
         >
             <div
                 style={{
-                    fontSize: "22px",
-                    width: "42px",
-                    height: "42px",
-                    borderRadius: "10px",
-                    background: "rgba(255, 255, 255, 0.05)",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "6px",
+                    background: "#1e293b",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     flexShrink: 0,
                 }}
             >
-                {displayIcon}
+                {renderTypeIcon()}
             </div>
 
             <div style={{ flex: 1 }}>
@@ -69,21 +95,21 @@ export default function InsightCard({
                         style={{
                             margin: 0,
                             fontSize: "14px",
-                            fontWeight: 700,
+                            fontWeight: 600,
                             color: "#f1f5f9",
                         }}
                     >
-                        {title || "Insight"}
+                        {title || "Analytical Insight"}
                     </h4>
 
                     {priority && (
                         <span
                             style={{
                                 fontSize: "10px",
-                                fontWeight: 700,
+                                fontWeight: 600,
                                 textTransform: "uppercase",
-                                padding: "2px 8px",
-                                borderRadius: "10px",
+                                padding: "2px 6px",
+                                borderRadius: "4px",
                                 background: pri.bg,
                                 color: pri.text,
                                 border: `1px solid ${pri.border}`,
