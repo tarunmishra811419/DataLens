@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════
-// DataLens — Dataset Service
+// DataLens - Dataset Service
 // Manages saving, updating, retrieving, and deleting datasets.
 // Operates with persistent LocalStorage and syncs with backend API.
 // ═══════════════════════════════════════════════

@@ -13,6 +13,8 @@ import Visualize from "../pages/Visualize/Visualize";
 import CompareDatasets from "../pages/Compare/CompareDatasets";
 import Profile from "../pages/Profile/Profile";
 import Stopwatch from "../pages/Stopwatch/Stopwatch";
+import PrivacyPolicy from "../pages/Legal/PrivacyPolicy";
+import TermsConditions from "../pages/Legal/TermsConditions";
 
 function AppRoutes() {
     return (
@@ -61,6 +63,9 @@ function AppRoutes() {
             <Route path="/compare" element={<CompareDatasets />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/stopwatch" element={<Stopwatch />} />
+
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsConditions />} />
 
             <Route path="*" element={<NotFound />} />
         </Routes>

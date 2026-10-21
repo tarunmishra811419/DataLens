@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════
-// DataLens — Authentication Service
+// DataLens - Authentication Service
 // Handles user login, registration, password resets,
 // and token persistence with backend API & offline fallback.
 // ═══════════════════════════════════════════════
@@ -7,7 +7,7 @@
 const API_BASE_URL =
     (import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api/auth";
 
-// Render free tier cold-starts can take up to 20 seconds — use a generous timeout.
+// Render free tier cold-starts can take up to 20 seconds - use a generous timeout.
 const REQUEST_TIMEOUT_MS = 20000;
 
 /**
