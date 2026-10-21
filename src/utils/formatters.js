@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════
-// DataLens — Formatters
+// DataLens - Formatters
 // Display formatting utilities for currency,
 // percentages, dates, numbers, and relative time.
 // ═══════════════════════════════════════════════

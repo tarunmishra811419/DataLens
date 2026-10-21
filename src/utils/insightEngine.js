@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════
-// DataLens — Insight Engine (Rule-Based AI)
+// DataLens - Insight Engine (Rule-Based AI)
 // Generates natural language insights from data.
-// Zero API cost — pure JavaScript logic.
+// Zero API cost - pure JavaScript logic.
 // ═══════════════════════════════════════════════
 
 import {
@@ -202,7 +202,7 @@ export function generatePeriodInsights(period1Values, period2Values, period1Labe
     if (period2Values.length > period1Values.length) {
         insights.push(createInsight(
             INSIGHT_TYPES.CONSISTENCY,
-            `You logged ${period2Values.length - period1Values.length} more entries in ${period2Label} — great consistency!`,
+            `You logged ${period2Values.length - period1Values.length} more entries in ${period2Label} - great consistency!`,
             5
         ));
     }
@@ -221,19 +221,19 @@ export function generateStreakInsights(dates, userName) {
     if (current >= 7) {
         insights.push(createInsight(
             INSIGHT_TYPES.STREAK,
-            `${greeting}${current}-day streak! ${current >= 30 ? "You're on fire — legendary consistency!" : "Keep it going!"}`,
+            `${greeting}${current}-day streak! ${current >= 30 ? "You're on fire - legendary consistency!" : "Keep it going!"}`,
             current >= 30 ? 9 : 7
         ));
     } else if (current >= 3) {
         insights.push(createInsight(
             INSIGHT_TYPES.STREAK,
-            `${greeting}${current}-day streak — building a great habit!`,
+            `${greeting}${current}-day streak - building a great habit!`,
             5
         ));
     } else if (current === 0 && longest > 0) {
         insights.push(createInsight(
             INSIGHT_TYPES.STREAK,
-            `${userName ? `${userName}, your` : "Your"} streak ended. Your best was ${longest} days — let's beat that!`,
+            `${userName ? `${userName}, your` : "Your"} streak ended. Your best was ${longest} days - let's beat that!`,
             6
         ));
     }
@@ -263,7 +263,7 @@ function analyzeTrend(values, labels, name) {
         if (r2 > 0.7) {
             return createInsight(
                 INSIGHT_TYPES.TREND_UP,
-                `${name} shows a strong upward trend — values are steadily increasing from ${labels[0]} to ${labels[labels.length - 1]}.`,
+                `${name} shows a strong upward trend - values are steadily increasing from ${labels[0]} to ${labels[labels.length - 1]}.`,
                 8
             );
         }
@@ -356,7 +356,7 @@ function analyzeExtremes(values, labels, name) {
     if (highest.index === values.length - 1) {
         insights.push(createInsight(
             INSIGHT_TYPES.HIGHEST_VALUE,
-            `${labels[highest.index]} recorded the highest value ever for ${name} — you're at your peak!`,
+            `${labels[highest.index]} recorded the highest value ever for ${name} - you're at your peak!`,
             7
         ));
     } else {
@@ -385,13 +385,13 @@ function analyzeAnomalies(values, labels, name) {
         if (a.type === "spike") {
             return createInsight(
                 INSIGHT_TYPES.ANOMALY_SPIKE,
-                `Unusual spike detected in ${name} (${label}) — value was ${Math.abs(a.deviation)}% above average.`,
+                `Unusual spike detected in ${name} (${label}) - value was ${Math.abs(a.deviation)}% above average.`,
                 8
             );
         } else {
             return createInsight(
                 INSIGHT_TYPES.ANOMALY_DROP,
-                `Sudden drop detected in ${name} (${label}) — value was ${Math.abs(a.deviation)}% below average.`,
+                `Sudden drop detected in ${name} (${label}) - value was ${Math.abs(a.deviation)}% below average.`,
                 8
             );
         }
@@ -408,13 +408,13 @@ function analyzeConsistency(values, name) {
     if (avgDeviation < 5) {
         return createInsight(
             INSIGHT_TYPES.CONSISTENCY,
-            `${name} is remarkably consistent — values barely fluctuate. Great stability!`,
+            `${name} is remarkably consistent - values barely fluctuate. Great stability!`,
             5
         );
     } else if (avgDeviation > 30) {
         return createInsight(
             INSIGHT_TYPES.CONSISTENCY,
-            `${name} has high variability — values swing significantly between entries.`,
+            `${name} has high variability - values swing significantly between entries.`,
             4
         );
     }
@@ -445,7 +445,7 @@ function analyzeMilestones(values, labels, name) {
         if (count === m) {
             insights.push(createInsight(
                 INSIGHT_TYPES.MILESTONE,
-                `You've logged ${m} entries in ${name} — impressive dedication!`,
+                `You've logged ${m} entries in ${name} - impressive dedication!`,
                 6
             ));
             break;

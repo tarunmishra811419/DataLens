@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════
-// DataLens — Constants
+// DataLens - Constants
 // All app-wide constants, categories, templates,
 // achievement definitions, and configurations.
 // ═══════════════════════════════════════════════

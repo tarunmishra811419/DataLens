@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════
-// DataLens — IndexedDB Utility
+// DataLens - IndexedDB Utility
 // Local-only mode: store datasets entirely in the
 // browser with no server sync. Uses IndexedDB.
 // ═══════════════════════════════════════════════

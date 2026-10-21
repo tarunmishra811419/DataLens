@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════
-// DataLens — Chart Recommender
+// DataLens - Chart Recommender
 // Analyzes column types and data patterns to
 // suggest the best chart type automatically.
 // ═══════════════════════════════════════════════

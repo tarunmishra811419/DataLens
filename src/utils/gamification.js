@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════
-// DataLens — Gamification System
+// DataLens - Gamification System
 // Achievements, streaks, badges, levels, and
 // progress rings to keep users engaged.
 // ═══════════════════════════════════════════════

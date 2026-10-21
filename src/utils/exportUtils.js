@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════
-// DataLens — Export Utilities
+// DataLens - Export Utilities
 // Export data to CSV, Excel, PDF and download
 // charts as PNG/PDF images.
 // ═══════════════════════════════════════════════

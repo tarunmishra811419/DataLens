@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════
-// DataLens — Validators
+// DataLens - Validators
 // Input validation functions for auth forms,
 // dataset creation, data entry, and settings.
 // ═══════════════════════════════════════════════

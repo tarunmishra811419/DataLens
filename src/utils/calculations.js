@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════
-// DataLens — Calculations
+// DataLens - Calculations
 // All math/statistics functions for data analysis,
 // anomaly detection, projections, and gamification.
 // ═══════════════════════════════════════════════
