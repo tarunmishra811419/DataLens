@@ -24,6 +24,7 @@ import {
     RotateCcw,
     Check,
     Bookmark,
+    X,
 } from "lucide-react";
 import { getSavedDatasets, saveDataset, saveComparison } from "../../services/datasetService";
 import "./CompareDatasets.css";
@@ -396,16 +397,23 @@ export default function CompareDatasets() {
         }
     };
 
-    // Save complete comparison report to user's profile
-    const handleSaveToProfile = () => {
-        try {
-            const defaultTitle = `${activeDataA.name} vs ${activeDataB.name}`;
-            const title = window.prompt("Save comparison to your Profile as:", defaultTitle);
-            if (!title || !title.trim()) return;
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [customCmpTitle, setCustomCmpTitle] = useState("");
 
+    const handleOpenSaveModal = () => {
+        setCustomCmpTitle(`${activeDataA.name} vs ${activeDataB.name}`);
+        setShowSaveModal(true);
+    };
+
+    // Save complete comparison report to user's profile
+    const handleConfirmSaveToProfile = (e) => {
+        if (e) e.preventDefault();
+        const finalTitle = customCmpTitle.trim() || `${activeDataA.name} vs ${activeDataB.name}`;
+
+        try {
             const report = {
                 id: location.state?.loadComparison?.id || `cmp_${Date.now()}`,
-                title: title.trim(),
+                title: finalTitle,
                 mode,
                 datasetA: {
                     id: activeDataA.id,
@@ -431,6 +439,7 @@ export default function CompareDatasets() {
             };
 
             saveComparison(report);
+            setShowSaveModal(false);
             setSaveStatus(`Comparison "${report.title}" saved to your profile!`);
             setTimeout(() => setSaveStatus(null), 4000);
         } catch {
@@ -462,7 +471,7 @@ export default function CompareDatasets() {
                         <button
                             type="button"
                             className="compare-save-profile-btn"
-                            onClick={handleSaveToProfile}
+                            onClick={handleOpenSaveModal}
                             title="Save this comparative report to your Profile"
                         >
                             <Bookmark size={15} />
@@ -1022,6 +1031,75 @@ export default function CompareDatasets() {
                     </div>
                 </section>
             </div>
+
+            {/* Modal Dialog for Saving Comparison to Profile */}
+            {showSaveModal && (
+                <div className="compare-modal-backdrop" onClick={() => setShowSaveModal(false)}>
+                    <div className="compare-modal-card" onClick={(e) => e.stopPropagation()}>
+                        <div className="compare-modal-header">
+                            <div className="compare-modal-title-group">
+                                <Bookmark size={18} className="compare-modal-icon" />
+                                <h3>Save Comparison to Profile</h3>
+                            </div>
+                            <button
+                                type="button"
+                                className="compare-modal-close"
+                                onClick={() => setShowSaveModal(false)}
+                                aria-label="Close"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleConfirmSaveToProfile} className="compare-modal-form">
+                            <p className="compare-modal-desc">
+                                Name this report to store its key metrics, visual delta series, and input data in your profile account.
+                            </p>
+                            <div className="compare-modal-field">
+                                <label htmlFor="cmp-title-input">Report Title</label>
+                                <input
+                                    id="cmp-title-input"
+                                    type="text"
+                                    value={customCmpTitle}
+                                    onChange={(e) => setCustomCmpTitle(e.target.value)}
+                                    placeholder="e.g. Q1 vs Q2 Performance Review"
+                                    autoFocus
+                                    required
+                                />
+                            </div>
+                            <div className="compare-modal-summary-box">
+                                <div className="summary-item">
+                                    <span className="summary-label">Dataset A:</span>
+                                    <span className="summary-val">{activeDataA.name}</span>
+                                </div>
+                                <div className="summary-item">
+                                    <span className="summary-label">Dataset B:</span>
+                                    <span className="summary-val">{activeDataB.name}</span>
+                                </div>
+                                <div className="summary-item">
+                                    <span className="summary-label">Mode:</span>
+                                    <span className="summary-val">{mode === "manual" ? "Manual Data Entry" : "Preset Datasets"}</span>
+                                </div>
+                            </div>
+                            <div className="compare-modal-actions">
+                                <button
+                                    type="button"
+                                    className="compare-modal-btn cancel"
+                                    onClick={() => setShowSaveModal(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="compare-modal-btn confirm"
+                                >
+                                    <Save size={15} />
+                                    <span>Save Report</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
