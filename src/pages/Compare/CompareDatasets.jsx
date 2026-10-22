@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -23,8 +23,9 @@ import {
     Save,
     RotateCcw,
     Check,
+    Bookmark,
 } from "lucide-react";
-import { getSavedDatasets, saveDataset } from "../../services/datasetService";
+import { getSavedDatasets, saveDataset, saveComparison } from "../../services/datasetService";
 import "./CompareDatasets.css";
 
 ChartJS.register(
@@ -119,6 +120,7 @@ function calcDelta(a, b) {
 
 export default function CompareDatasets() {
     const navigate = useNavigate();
+    const location = useLocation();
 
     // Mode: 'preset' (choose from sample/saved datasets) or 'manual' (interactive live entry)
     const [mode, setMode] = useState("manual");
@@ -138,6 +140,25 @@ export default function CompareDatasets() {
             console.error("Failed to load saved datasets", e);
         }
     }, []);
+
+    // Check if a saved comparison was passed from Profile
+    useEffect(() => {
+        if (location.state?.loadComparison) {
+            const loaded = location.state.loadComparison;
+            if (loaded.mode) setMode(loaded.mode);
+            if (loaded.manualA) setManualA(loaded.manualA);
+            if (loaded.manualB) setManualB(loaded.manualB);
+            if (loaded.seriesData) setSeriesData(loaded.seriesData);
+            if (loaded.datasetA?.id && SAMPLE_DATASETS[loaded.datasetA.id]) {
+                setDatasetAId(loaded.datasetA.id);
+            }
+            if (loaded.datasetB?.id && SAMPLE_DATASETS[loaded.datasetB.id]) {
+                setDatasetBId(loaded.datasetB.id);
+            }
+            setSaveStatus(`Loaded comparison report: "${loaded.title || "Custom Comparison"}"`);
+            setTimeout(() => setSaveStatus(null), 4000);
+        }
+    }, [location.state]);
 
     // Manual Entry State for Dataset A & Dataset B
     const [manualA, setManualA] = useState({
@@ -375,6 +396,49 @@ export default function CompareDatasets() {
         }
     };
 
+    // Save complete comparison report to user's profile
+    const handleSaveToProfile = () => {
+        try {
+            const defaultTitle = `${activeDataA.name} vs ${activeDataB.name}`;
+            const title = window.prompt("Save comparison to your Profile as:", defaultTitle);
+            if (!title || !title.trim()) return;
+
+            const report = {
+                id: location.state?.loadComparison?.id || `cmp_${Date.now()}`,
+                title: title.trim(),
+                mode,
+                datasetA: {
+                    id: activeDataA.id,
+                    name: activeDataA.name,
+                    period: activeDataA.period,
+                    metrics: activeDataA.metrics,
+                },
+                datasetB: {
+                    id: activeDataB.id,
+                    name: activeDataB.name,
+                    period: activeDataB.period,
+                    metrics: activeDataB.metrics,
+                },
+                manualA,
+                manualB,
+                seriesData,
+                deltas: {
+                    revenue: revenueDelta,
+                    units: unitsDelta,
+                    avgOrder: avgOrderDelta,
+                    activeUsers: usersDelta,
+                },
+            };
+
+            saveComparison(report);
+            setSaveStatus(`Comparison "${report.title}" saved to your profile!`);
+            setTimeout(() => setSaveStatus(null), 4000);
+        } catch {
+            setSaveStatus("Failed to save comparison to profile.");
+            setTimeout(() => setSaveStatus(null), 3000);
+        }
+    };
+
     return (
         <div className="compare-page">
             <div className="compare-container">
@@ -394,32 +458,49 @@ export default function CompareDatasets() {
                         </div>
                     </div>
 
-                    {/* Mode Toggle Buttons */}
-                    <div className="compare-mode-switch">
+                    <div className="compare-header-right">
                         <button
                             type="button"
-                            className={`compare-mode-btn ${mode === "manual" ? "active" : ""}`}
-                            onClick={() => setMode("manual")}
+                            className="compare-save-profile-btn"
+                            onClick={handleSaveToProfile}
+                            title="Save this comparative report to your Profile"
                         >
-                            <Sliders size={15} />
-                            <span>Manual Data Entry</span>
+                            <Bookmark size={15} />
+                            <span>Save to Profile</span>
                         </button>
-                        <button
-                            type="button"
-                            className={`compare-mode-btn ${mode === "preset" ? "active" : ""}`}
-                            onClick={() => setMode("preset")}
-                        >
-                            <Database size={15} />
-                            <span>Preset Datasets</span>
-                        </button>
+
+                        {/* Mode Toggle Buttons */}
+                        <div className="compare-mode-switch">
+                            <button
+                                type="button"
+                                className={`compare-mode-btn ${mode === "manual" ? "active" : ""}`}
+                                onClick={() => setMode("manual")}
+                            >
+                                <Sliders size={15} />
+                                <span>Manual Data Entry</span>
+                            </button>
+                            <button
+                                type="button"
+                                className={`compare-mode-btn ${mode === "preset" ? "active" : ""}`}
+                                onClick={() => setMode("preset")}
+                            >
+                                <Database size={15} />
+                                <span>Preset Datasets</span>
+                            </button>
+                        </div>
                     </div>
                 </header>
 
                 {/* Save status notification banner */}
                 {saveStatus && (
                     <div className="compare-notification">
-                        <Check size={16} />
-                        <span>{saveStatus}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <Check size={16} />
+                            <span>{saveStatus}</span>
+                        </div>
+                        <Link to="/profile" className="notification-profile-link">
+                            View in Profile →
+                        </Link>
                     </div>
                 )}
 

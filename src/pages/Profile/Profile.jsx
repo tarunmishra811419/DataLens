@@ -10,6 +10,8 @@ import {
     getSavedDatasets,
     deleteSavedDataset,
     getDatasetStats,
+    getSavedComparisons,
+    deleteSavedComparison,
 } from "../../services/datasetService";
 import "./Profile.css";
 
@@ -49,14 +51,22 @@ export default function Profile() {
     const [stats, setStats] = useState(() => getDatasetStats());
     const [filterCategory, setFilterCategory] = useState("All");
 
+    // Saved Comparisons state
+    const [comparisons, setComparisons] = useState(() => getSavedComparisons());
+
     useEffect(() => {
         const handleDatasetsUpdated = () => {
             setDatasets(getSavedDatasets());
             setStats(getDatasetStats());
         };
+        const handleComparisonsUpdated = () => {
+            setComparisons(getSavedComparisons());
+        };
         window.addEventListener("datalens_datasets_updated", handleDatasetsUpdated);
+        window.addEventListener("datalens_comparisons_updated", handleComparisonsUpdated);
         return () => {
             window.removeEventListener("datalens_datasets_updated", handleDatasetsUpdated);
+            window.removeEventListener("datalens_comparisons_updated", handleComparisonsUpdated);
         };
     }, []);
 
@@ -135,6 +145,19 @@ export default function Profile() {
             await deleteSavedDataset(id);
             setDatasets(getSavedDatasets());
             setStats(getDatasetStats());
+            showFeedback(`Dataset "${name}" deleted.`, "success");
+        }
+    };
+
+    const handleOpenComparison = (comparison) => {
+        navigate("/compare", { state: { loadComparison: comparison } });
+    };
+
+    const handleDeleteComparison = (id, title) => {
+        if (window.confirm(`Are you sure you want to delete comparison "${title || "this comparison"}"?`)) {
+            deleteSavedComparison(id);
+            setComparisons(getSavedComparisons());
+            showFeedback("Comparison report deleted.", "success");
         }
     };
 
@@ -490,12 +513,12 @@ export default function Profile() {
                         <strong>{stats.totalRows.toLocaleString()}</strong>
                     </div>
                     <div className="profile-stat-box">
-                        <span>Indexed Data Cells</span>
-                        <strong>{stats.totalCells.toLocaleString()}</strong>
+                        <span>Saved Comparisons</span>
+                        <strong>{comparisons.length}</strong>
                     </div>
                     <div className="profile-stat-box">
-                        <span>Active Categories</span>
-                        <strong>{Math.max(1, categories.length - 1)}</strong>
+                        <span>Indexed Data Cells</span>
+                        <strong>{stats.totalCells.toLocaleString()}</strong>
                     </div>
                 </section>
 
@@ -618,6 +641,119 @@ export default function Profile() {
                                                     Visualize
                                                 </button>
                                             </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </section>
+
+                {/* ─── Saved Comparisons Section ─── */}
+                <section className="profile-datasets-section">
+                    <div className="profile-datasets-header">
+                        <div className="profile-datasets-title-wrap">
+                            <h2 className="profile-datasets-title">Saved Comparisons & Reports</h2>
+                            <span className="profile-count-pill">{comparisons.length} Total</span>
+                        </div>
+                        <button
+                            type="button"
+                            className="profile-create-dataset-btn"
+                            onClick={() => navigate("/compare")}
+                        >
+                            + New Comparison
+                        </button>
+                    </div>
+
+                    {comparisons.length === 0 ? (
+                        <div className="profile-empty-datasets">
+                            <div className="profile-empty-datasets-icon">
+                                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="2" y="3" width="20" height="18" rx="2" />
+                                    <line x1="12" y1="3" x2="12" y2="21" />
+                                </svg>
+                            </div>
+                            <h4>No comparisons saved yet</h4>
+                            <p>
+                                Run a comparative analysis in the Comparison Studio and click "Save to Profile" to access and reload it here anytime.
+                            </p>
+                            <button
+                                type="button"
+                                className="profile-create-dataset-btn"
+                                onClick={() => navigate("/compare")}
+                            >
+                                Open Comparison Studio
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="profile-comparisons-grid">
+                            {comparisons.map((cmp) => {
+                                const nameA = cmp.datasetA?.name || cmp.manualA?.name || "Dataset A";
+                                const nameB = cmp.datasetB?.name || cmp.manualB?.name || "Dataset B";
+                                const revDelta = cmp.deltas?.revenue?.text || "0%";
+                                const isPos = cmp.deltas?.revenue?.isPositive !== false;
+                                const pointsCount = Array.isArray(cmp.seriesData) ? cmp.seriesData.length : 0;
+
+                                return (
+                                    <div key={cmp.id} className="saved-comparison-card">
+                                        <div className="comparison-card-top">
+                                            <div className="comparison-card-info">
+                                                <h3 className="comparison-card-name">{cmp.title || `${nameA} vs ${nameB}`}</h3>
+                                                <span className="comparison-mode-tag">
+                                                    {cmp.mode === "manual" ? "Manual Live Entry" : "Preset Match"}
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="dataset-delete-icon-btn"
+                                                onClick={() => handleDeleteComparison(cmp.id, cmp.title)}
+                                                title="Delete saved comparison"
+                                            >
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <polyline points="3 6 5 6 21 6" />
+                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                                </svg>
+                                            </button>
+                                        </div>
+
+                                        <div className="comparison-card-targets">
+                                            <div className="comparison-target-chip chip-a">
+                                                <span className="target-dot-a" />
+                                                <span>{nameA}</span>
+                                            </div>
+                                            <span className="comparison-vs-sep">vs</span>
+                                            <div className="comparison-target-chip chip-b">
+                                                <span className="target-dot-b" />
+                                                <span>{nameB}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="comparison-card-metrics">
+                                            <div className="comparison-metric-stat">
+                                                <span className="cmp-stat-label">Revenue Variance:</span>
+                                                <span className={`cmp-stat-badge ${isPos ? "badge-pos" : "badge-neg"}`}>
+                                                    {revDelta}
+                                                </span>
+                                            </div>
+                                            {pointsCount > 0 && (
+                                                <div className="comparison-metric-stat">
+                                                    <span className="cmp-stat-label">Breakdown:</span>
+                                                    <span className="cmp-stat-val">{pointsCount} categories</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="dataset-card-footer">
+                                            <span className="dataset-date-text">
+                                                Saved {formatDate(cmp.updatedAt || cmp.createdAt)}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                className="comparison-btn-open"
+                                                onClick={() => handleOpenComparison(cmp)}
+                                            >
+                                                Open in Studio →
+                                            </button>
                                         </div>
                                     </div>
                                 );

@@ -372,3 +372,95 @@ if (typeof window !== "undefined") {
         syncDatasetsWithBackend();
     });
 }
+
+// ═══════════════════════════════════════════════
+// Comparative Analysis Storage (Per-User Isolated)
+// ═══════════════════════════════════════════════
+
+export function getComparisonStorageKey() {
+    try {
+        const session = getAuthSession();
+        const uid =
+            session?.user?._id ||
+            session?.user?.id ||
+            (session?.user?.email ? encodeURIComponent(session.user.email) : "guest");
+        return `datalens_saved_comparisons_${uid}`;
+    } catch {
+        return "datalens_saved_comparisons_guest";
+    }
+}
+
+/**
+ * Get all saved comparison reports from LocalStorage.
+ */
+export function getSavedComparisons() {
+    try {
+        const key = getComparisonStorageKey();
+        const stored = localStorage.getItem(key);
+        if (!stored) return [];
+        const parsed = JSON.parse(stored);
+        return Array.isArray(parsed)
+            ? parsed.sort(
+                  (a, b) =>
+                      new Date(b.updatedAt || b.createdAt) -
+                      new Date(a.updatedAt || a.createdAt)
+              )
+            : [];
+    } catch (e) {
+        console.error("Failed to read comparisons from storage", e);
+        return [];
+    }
+}
+
+/**
+ * Save or update a comparison report.
+ */
+export function saveComparison(comparison) {
+    try {
+        const key = getComparisonStorageKey();
+        const existing = getSavedComparisons();
+        const now = new Date().toISOString();
+        const itemToSave = {
+            ...comparison,
+            id: comparison.id || `cmp_${Date.now()}`,
+            updatedAt: now,
+            createdAt: comparison.createdAt || now,
+        };
+        const index = existing.findIndex((c) => c.id === itemToSave.id);
+        let updated;
+        if (index >= 0) {
+            updated = [...existing];
+            updated[index] = itemToSave;
+        } else {
+            updated = [itemToSave, ...existing];
+        }
+        localStorage.setItem(key, JSON.stringify(updated));
+        window.dispatchEvent(
+            new CustomEvent("datalens_comparisons_updated", { detail: updated })
+        );
+        return itemToSave;
+    } catch (e) {
+        console.error("Failed to save comparison", e);
+        throw e;
+    }
+}
+
+/**
+ * Delete a saved comparison report by ID.
+ */
+export function deleteSavedComparison(id) {
+    try {
+        const key = getComparisonStorageKey();
+        const existing = getSavedComparisons();
+        const updated = existing.filter((c) => c.id !== id);
+        localStorage.setItem(key, JSON.stringify(updated));
+        window.dispatchEvent(
+            new CustomEvent("datalens_comparisons_updated", { detail: updated })
+        );
+        return true;
+    } catch (e) {
+        console.error("Failed to delete comparison", e);
+        return false;
+    }
+}
+
