@@ -22,9 +22,15 @@ const REQUEST_TIMEOUT_MS = 20000;
  */
 export async function signInWithGoogle() {
     // 1. Verify Firebase configuration
-    if (!import.meta.env.VITE_FIREBASE_API_KEY || import.meta.env.VITE_FIREBASE_API_KEY.includes("your-")) {
+    if (
+        !auth ||
+        !googleProvider ||
+        !import.meta.env.VITE_FIREBASE_API_KEY ||
+        import.meta.env.VITE_FIREBASE_API_KEY.includes("your_") ||
+        import.meta.env.VITE_FIREBASE_API_KEY.includes("your-")
+    ) {
         throw new Error(
-            "Firebase is not configured yet. Please add your Firebase credentials (VITE_FIREBASE_API_KEY, etc.) to your .env file."
+            "Google Sign-In is not configured yet. Please add your Firebase environment variables to your deployment settings."
         );
     }
 
@@ -115,7 +121,9 @@ export async function signInWithGoogle() {
  */
 export async function signOutFromGoogle() {
     try {
-        await firebaseSignOut(auth);
+        if (auth) {
+            await firebaseSignOut(auth);
+        }
     } catch {
         // Non-critical — local session is cleared by authService regardless
     }

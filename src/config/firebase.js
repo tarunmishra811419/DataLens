@@ -1,38 +1,44 @@
 // ============================================================
-// DataLens - Firebase Configuration
-// ============================================================
-// HOW TO FILL THIS IN:
-//   1. Go to https://console.firebase.google.com
-//   2. Click "Add project" -> name it "DataLens" -> Continue
-//   3. In the project dashboard, click the </> (Web) icon to add a web app
-//   4. Register the app (name it "DataLens Web")
-//   5. Copy the firebaseConfig object values below
-//   6. Go to Authentication -> Sign-in method -> Enable "Google"
-//   7. Add your production domain to "Authorized domains"
+// DataLens - Firebase Configuration (Resilient Init)
 // ============================================================
 
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
-const firebaseConfig = {
-    apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId:             import.meta.env.VITE_FIREBASE_APP_ID,
-};
+const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
 
-const app = initializeApp(firebaseConfig);
+let app = null;
+let auth = null;
+let googleProvider = null;
 
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+// Only initialize if an actual API key is present (prevents crash on Vercel if env vars are unset)
+if (
+    apiKey &&
+    typeof apiKey === "string" &&
+    !apiKey.includes("your_") &&
+    !apiKey.includes("your-")
+) {
+    try {
+        const firebaseConfig = {
+            apiKey:            apiKey,
+            authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+            projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
+            storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+            messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+            appId:             import.meta.env.VITE_FIREBASE_APP_ID,
+        };
 
-// Request user's name and email from Google
-googleProvider.addScope("profile");
-googleProvider.addScope("email");
+        app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        googleProvider = new GoogleAuthProvider();
 
-// Always prompt user to pick a Google account (even if already signed in)
-googleProvider.setCustomParameters({ prompt: "select_account" });
+        googleProvider.addScope("profile");
+        googleProvider.addScope("email");
+        googleProvider.setCustomParameters({ prompt: "select_account" });
+    } catch (err) {
+        console.warn("[Firebase] Initialization error:", err.message);
+    }
+}
 
+export { auth, googleProvider };
 export default app;
