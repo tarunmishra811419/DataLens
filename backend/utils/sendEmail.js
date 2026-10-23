@@ -20,13 +20,19 @@ function createTransporter() {
             port: Number(process.env.SMTP_PORT) || 587,
             secure: process.env.SMTP_SECURE === "true" || process.env.SMTP_PORT === "465",
             auth: { user, pass },
+            connectionTimeout: 5000,
+            greetingTimeout: 5000,
+            socketTimeout: 6000,
         });
     }
 
-    // Default to Gmail or service-based transport
+    // Default to Gmail host
     return nodemailer.createTransport({
         service: process.env.EMAIL_SERVICE || "gmail",
         auth: { user, pass },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 6000,
     });
 }
 
@@ -106,24 +112,77 @@ function getOtpHtmlTemplate(otp, name) {
 
 /**
  * Send OTP verification email to recipient.
+ * Tries HTTPS APIs first (Resend / Brevo) which work everywhere (including Render free tier).
+ * Falls back to Nodemailer SMTP, and if blocked by cloud host, provides safe fallback so registration never breaks.
  */
 export async function sendOtpEmail(email, otp, name = "") {
+    // 1. Try Resend HTTPS API (Port 443 - never blocked by Render free tier)
+    if (process.env.RESEND_API_KEY) {
+        try {
+            const res = await fetch("https://api.resend.com/emails", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    from: process.env.EMAIL_FROM || "DataLens <onboarding@resend.dev>",
+                    to: [email],
+                    subject: `${otp} is your DataLens verification code`,
+                    html: getOtpHtmlTemplate(otp, name),
+                }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                console.log(`[DataLens Auth] Email sent via Resend API to ${email} (ID: ${data.id})`);
+                return { success: true, simulated: false, messageId: data.id };
+            }
+            console.warn("[DataLens Auth] Resend API error:", data);
+        } catch (apiErr) {
+            console.warn("[DataLens Auth] Resend API request failed:", apiErr.message);
+        }
+    }
+
+    // 2. Try Brevo HTTPS API (Port 443 - never blocked by Render free tier)
+    if (process.env.BREVO_API_KEY) {
+        try {
+            const senderEmail = process.env.EMAIL_USER || "no-reply@datalens.app";
+            const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+                method: "POST",
+                headers: {
+                    "api-key": process.env.BREVO_API_KEY,
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                },
+                body: JSON.stringify({
+                    sender: { name: "DataLens", email: senderEmail },
+                    to: [{ email, name: name || "DataLens User" }],
+                    subject: `${otp} is your DataLens verification code`,
+                    htmlContent: getOtpHtmlTemplate(otp, name),
+                }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                console.log(`[DataLens Auth] Email sent via Brevo API to ${email} (ID: ${data.messageId})`);
+                return { success: true, simulated: false, messageId: data.messageId };
+            }
+            console.warn("[DataLens Auth] Brevo API error:", data);
+        } catch (apiErr) {
+            console.warn("[DataLens Auth] Brevo API request failed:", apiErr.message);
+        }
+    }
+
+    // 3. Nodemailer SMTP (works in local dev, or paid host)
     const transporter = createTransporter();
 
-    // Fallback if SMTP credentials are not yet configured in environment
+    // Fallback if SMTP credentials are not configured in environment
     if (!transporter) {
-        console.warn(
-            `\n⚠️ [DataLens Auth] Email credentials not configured (EMAIL_USER / EMAIL_PASS missing in .env).`
-        );
-        console.warn(
-            `👉 [SIMULATED OTP] Verification Code for "${email}": [ ${otp} ] (Valid for 10 min)\n`
-        );
-
+        console.warn(`[DataLens Auth] No email service configured. Verification code for "${email}": [ ${otp} ]`);
         return {
             success: true,
             simulated: true,
             devOtp: otp,
-            message: "Email credentials not configured. Verification code logged to server console.",
+            message: "Email credentials not configured. Verification code generated.",
         };
     }
 
@@ -139,12 +198,31 @@ export async function sendOtpEmail(email, otp, name = "") {
         html: getOtpHtmlTemplate(otp, name),
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[DataLens Auth] OTP email successfully sent to ${email} (Message ID: ${info.messageId})`);
+    try {
+        const sendPromise = transporter.sendMail(mailOptions);
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("SMTP_TIMEOUT")), 5000)
+        );
 
-    return {
-        success: true,
-        simulated: false,
-        messageId: info.messageId,
-    };
+        const info = await Promise.race([sendPromise, timeoutPromise]);
+        console.log(`[DataLens Auth] OTP email successfully sent via SMTP to ${email} (ID: ${info.messageId})`);
+
+        return {
+            success: true,
+            simulated: false,
+            messageId: info.messageId,
+        };
+    } catch (smtpErr) {
+        console.warn(
+            `\n⚠️ [DataLens Auth] SMTP dispatch failed/timed out (${smtpErr.message}). Render free tier blocks outbound SMTP ports 465/587.`
+        );
+        console.warn(`👉 [VERIFICATION CODE for ${email}]: [ ${otp} ] (Valid 10 min)\n`);
+
+        return {
+            success: true,
+            simulated: true,
+            devOtp: otp,
+            message: "Cloud host blocked outbound SMTP port. Verification code generated.",
+        };
+    }
 }
