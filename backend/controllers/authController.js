@@ -1,5 +1,145 @@
 import User from "../models/User.js";
+import Otp from "../models/Otp.js";
 import generateToken from "../utils/generateToken.js";
+import { sendOtpEmail } from "../utils/sendEmail.js";
+
+// Send OTP to email for account registration
+export const sendRegisterOtp = async (req, res) => {
+    try {
+        const { email, name } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ message: "Email is required" });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+
+        // Check if an account already exists with this email
+        const existingUser = await User.findOne({ email: normalizedEmail });
+        if (existingUser) {
+            return res.status(400).json({
+                message: "An account with this email already exists. Please log in.",
+            });
+        }
+
+        // Throttle requests: check if an OTP was sent within the last 45 seconds
+        const recentOtp = await Otp.findOne({
+            email: normalizedEmail,
+            createdAt: { $gt: new Date(Date.now() - 45 * 1000) },
+        });
+
+        if (recentOtp) {
+            return res.status(429).json({
+                message: "A verification code was recently sent. Please wait before requesting another.",
+            });
+        }
+
+        // Generate 6-digit numeric OTP
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        // Upsert OTP record for this email
+        await Otp.findOneAndUpdate(
+            { email: normalizedEmail },
+            { otp: otpCode, expiresAt, createdAt: new Date() },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+
+        // Send OTP email
+        const emailResult = await sendOtpEmail(normalizedEmail, otpCode, name || "");
+
+        res.status(200).json({
+            success: true,
+            message: `Verification code sent to ${normalizedEmail}`,
+            simulated: emailResult.simulated,
+            devOtp: emailResult.simulated ? emailResult.devOtp : undefined,
+        });
+    } catch (error) {
+        console.error("sendRegisterOtp error:", error);
+        res.status(500).json({ message: error.message || "Failed to send verification code" });
+    }
+};
+
+// Verify OTP and create user account
+export const registerWithOtp = async (req, res) => {
+    try {
+        const { name, email, password, otp, role } = req.body;
+
+        if (!name || !email || !password || !otp) {
+            return res.status(400).json({
+                message: "Name, email, password, and 6-digit verification code are required",
+            });
+        }
+
+        if (password.length < 6) {
+            return res.status(400).json({
+                message: "Password must be at least 6 characters long",
+            });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+        const cleanedOtp = String(otp).trim();
+
+        // Check if user already registered in the meantime
+        const existingUser = await User.findOne({ email: normalizedEmail });
+        if (existingUser) {
+            return res.status(400).json({
+                message: "An account with this email already exists. Please log in.",
+            });
+        }
+
+        // Validate OTP
+        const otpRecord = await Otp.findOne({ email: normalizedEmail });
+
+        if (!otpRecord) {
+            return res.status(400).json({
+                message: "Verification code expired or not found. Please request a new code.",
+            });
+        }
+
+        if (otpRecord.otp !== cleanedOtp) {
+            return res.status(400).json({
+                message: "Invalid verification code. Please check your email and try again.",
+            });
+        }
+
+        if (new Date() > otpRecord.expiresAt) {
+            await Otp.deleteOne({ _id: otpRecord._id });
+            return res.status(400).json({
+                message: "Verification code has expired. Please request a new code.",
+            });
+        }
+
+        // OTP is valid - remove it so it cannot be reused
+        await Otp.deleteOne({ _id: otpRecord._id });
+
+        // Create the user
+        const user = await User.create({
+            name: name.trim(),
+            email: normalizedEmail,
+            password,
+            role: role || "Data Analyst",
+            authProvider: "local",
+        });
+
+        res.status(201).json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            bio: user.bio || "",
+            location: user.location || "",
+            phone: user.phone || "",
+            avatar: user.avatar || "",
+            authProvider: user.authProvider,
+            token: generateToken(user._id),
+            message: "Account verified and created successfully!",
+        });
+    } catch (error) {
+        console.error("registerWithOtp error:", error);
+        res.status(500).json({ message: error.message || "Failed to create account" });
+    }
+};
 
 // Register a new user
 export const registerUser = async (req, res) => {

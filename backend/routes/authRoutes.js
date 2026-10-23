@@ -1,6 +1,8 @@
 import express from "express";
 import {
     registerUser,
+    sendRegisterOtp,
+    registerWithOtp,
     loginUser,
     googleAuth,
     getMe,
@@ -11,6 +13,8 @@ import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
+router.post("/send-otp", sendRegisterOtp);
+router.post("/register-with-otp", registerWithOtp);
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.post("/google", googleAuth);          // Firebase Google sign-in

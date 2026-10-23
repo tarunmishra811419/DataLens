@@ -122,6 +122,112 @@ export async function loginUser(email, password, rememberMe = true) {
 }
 
 /**
+ * Send 6-digit OTP code to email for user registration.
+ */
+export async function sendRegisterOtp(email, name = "") {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/send-otp`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, name }),
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Failed to send verification code");
+        }
+
+        return {
+            success: true,
+            message: data.message,
+            simulated: data.simulated,
+            devOtp: data.devOtp,
+        };
+    } catch (err) {
+        clearTimeout(timeoutId);
+
+        const isNetworkError =
+            err.name === "AbortError" ||
+            err.message.includes("Failed to fetch") ||
+            err.message.includes("NetworkError");
+
+        if (isNetworkError) {
+            // Offline demo fallback: generate client demo code so user can test UI seamlessly
+            const demoCode = "123456";
+            return {
+                success: true,
+                simulated: true,
+                devOtp: demoCode,
+                message: "Verification code sent (Offline workspace mode - use 123456)",
+            };
+        }
+
+        throw err;
+    }
+}
+
+/**
+ * Verify email OTP and create user account.
+ */
+export async function registerWithOtp(name, email, password, otp) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/register-with-otp`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password, otp }),
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Failed to verify code and create account");
+        }
+
+        const user = { _id: data._id, name: data.name, email: data.email };
+        setAuthSession(user, data.token, true);
+        return { success: true, user, token: data.token, isDemo: false, message: data.message };
+    } catch (err) {
+        clearTimeout(timeoutId);
+
+        const isNetworkError =
+            err.name === "AbortError" ||
+            err.message.includes("Failed to fetch") ||
+            err.message.includes("NetworkError");
+
+        if (isNetworkError) {
+            const demoUser = {
+                _id: "demo-" + Date.now(),
+                name: name.trim() || "Data Analyst",
+                email: email,
+            };
+            const demoToken = "demo-jwt-" + Math.random().toString(36).substring(2);
+            setAuthSession(demoUser, demoToken, true);
+
+            return {
+                success: true,
+                user: demoUser,
+                token: demoToken,
+                isDemo: true,
+                notice: "Account created in Local Workspace Mode (Backend offline)",
+            };
+        }
+
+        throw err;
+    }
+}
+
+/**
  * Register a new user.
  * Attempts backend connection first, falls back to demo session if offline.
  */

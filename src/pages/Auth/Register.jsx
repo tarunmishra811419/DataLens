@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { validateName, validateEmail, validatePassword } from "../../utils/validators";
-import { registerUser } from "../../services/authService";
+import { sendRegisterOtp, registerWithOtp } from "../../services/authService";
 import { signInWithGoogle } from "../../services/googleAuthService";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail, ArrowLeft, ShieldCheck, KeyRound, Edit3 } from "lucide-react";
 import "./Register.css";
 
 const GoogleIcon = () => (
@@ -30,16 +30,36 @@ const GoogleIcon = () => (
 function Register() {
     const navigate = useNavigate();
 
+    // Step state: "details" (enter name/email/pass) or "otp" (verify code)
+    const [step, setStep] = useState("details");
+
     const [formData, setFormData] = useState({
         name: "",
         email: "",
         password: "",
     });
 
+    const [otpCode, setOtpCode] = useState("");
+    const [resendTimer, setResendTimer] = useState(60);
+    const [devHint, setDevHint] = useState(null);
+
     const [errors, setErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [serverMessage, setServerMessage] = useState(null);
+
+    // Resend countdown timer
+    useEffect(() => {
+        let interval = null;
+        if (step === "otp" && resendTimer > 0) {
+            interval = setInterval(() => {
+                setResendTimer((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [step, resendTimer]);
 
     const handleGoogleSignIn = async () => {
         setIsGoogleLoading(true);
@@ -76,9 +96,11 @@ function Register() {
         }
     };
 
-    const handleSubmit = async (e) => {
+    // Step 1: Validate inputs and send OTP code to email
+    const handleSendOtp = async (e) => {
         e.preventDefault();
         setServerMessage(null);
+        setDevHint(null);
 
         const nameRes = validateName(formData.name);
         const emailRes = validateEmail(formData.email);
@@ -97,11 +119,79 @@ function Register() {
         setIsLoading(true);
 
         try {
-            const res = await registerUser(formData.name, formData.email, formData.password);
+            const res = await sendRegisterOtp(formData.email, formData.name);
+            setStep("otp");
+            setOtpCode("");
+            setResendTimer(60);
+            setServerMessage({
+                type: "success",
+                text: `Verification code sent to ${formData.email}. Please check your inbox.`,
+            });
+            if (res.devOtp) {
+                setDevHint(`Test Mode Code: ${res.devOtp}`);
+            }
+        } catch (err) {
+            setServerMessage({
+                type: "error",
+                text: err.message || "Failed to send verification code. Please try again.",
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Step 2: Resend OTP code
+    const handleResendOtp = async () => {
+        if (resendTimer > 0 || isLoading) return;
+        setIsLoading(true);
+        setServerMessage(null);
+        setDevHint(null);
+
+        try {
+            const res = await sendRegisterOtp(formData.email, formData.name);
+            setResendTimer(60);
+            setServerMessage({
+                type: "success",
+                text: `New verification code sent to ${formData.email}`,
+            });
+            if (res.devOtp) {
+                setDevHint(`Test Mode Code: ${res.devOtp}`);
+            }
+        } catch (err) {
+            setServerMessage({
+                type: "error",
+                text: err.message || "Failed to resend verification code. Please wait a moment.",
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Step 2: Verify OTP and create user account
+    const handleVerifyAndRegister = async (e) => {
+        e.preventDefault();
+        setServerMessage(null);
+
+        const cleanedOtp = otpCode.trim();
+        if (!cleanedOtp || cleanedOtp.length < 6) {
+            setErrors({ otp: "Please enter the full 6-digit verification code" });
+            return;
+        }
+
+        setIsLoading(true);
+
+        try {
+            const res = await registerWithOtp(
+                formData.name,
+                formData.email,
+                formData.password,
+                cleanedOtp
+            );
+
             if (res.success) {
                 setServerMessage({
                     type: "success",
-                    text: res.notice || "Account created! Redirecting to dashboard...",
+                    text: res.notice || "Email verified! Account created. Redirecting to dashboard...",
                 });
                 setTimeout(() => {
                     navigate("/dashboard");
@@ -110,7 +200,7 @@ function Register() {
         } catch (err) {
             setServerMessage({
                 type: "error",
-                text: err.message || "Failed to create account. Please try again.",
+                text: err.message || "Verification failed. Please check the code and try again.",
             });
         } finally {
             setIsLoading(false);
@@ -120,22 +210,30 @@ function Register() {
     return (
         <div className="register-page">
             <div className="register-card">
-
                 <div className="register-brand">
                     <div className="register-logo">D</div>
                     <span>DataLens</span>
                 </div>
 
                 <div className="register-heading">
-                    <h1>Create your account</h1>
-                    <p>Start turning your data into meaningful insights.</p>
+                    {step === "details" ? (
+                        <>
+                            <h1>Create your account</h1>
+                            <p>Verify your email to start turning data into meaningful insights.</p>
+                        </>
+                    ) : (
+                        <>
+                            <h1>Verify your email</h1>
+                            <p>Enter the 6-digit code sent to your email to activate your account.</p>
+                        </>
+                    )}
                 </div>
 
                 {serverMessage && (
                     <div
                         style={{
                             padding: "10px 14px",
-                            borderRadius: "10px",
+                            borderRadius: "8px",
                             fontSize: "13px",
                             marginBottom: "16px",
                             background:
@@ -151,99 +249,246 @@ function Register() {
                                     ? "rgba(16, 185, 129, 0.3)"
                                     : "rgba(239, 68, 68, 0.3)"
                             }`,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
                         }}
                     >
-                        {serverMessage.text}
+                        <span>{serverMessage.text}</span>
                     </div>
                 )}
 
-                {/* Google Sign Up */}
-                <button
-                    type="button"
-                    className="google-auth-btn"
-                    onClick={handleGoogleSignIn}
-                    disabled={isLoading || isGoogleLoading}
-                >
-                    {isGoogleLoading ? (
-                        <Loader2 size={18} className="spinner-icon" />
-                    ) : (
-                        <GoogleIcon />
-                    )}
-                    <span>{isGoogleLoading ? "Connecting to Google..." : "Continue with Google"}</span>
-                </button>
-
-                <div className="auth-divider">
-                    <span className="auth-divider-line" />
-                    <span className="auth-divider-text">or register with email</span>
-                    <span className="auth-divider-line" />
-                </div>
-
-                <form className="register-form" onSubmit={handleSubmit} noValidate>
-
-                    <div className="form-group">
-                        <label htmlFor="name">Full name</label>
-
-                        <input
-                            id="name"
-                            type="text"
-                            placeholder="Enter your name"
-                            value={formData.name}
-                            onChange={(e) => handleChange("name", e.target.value)}
-                            disabled={isLoading}
-                        />
-                        {errors.name && (
-                            <span style={{ color: "#f87171", fontSize: "12px", marginTop: "4px" }}>
-                                {errors.name}
-                            </span>
-                        )}
-                    </div>
-
-                    <div className="form-group">
-                        <label htmlFor="register-email">Email address</label>
-
-                        <input
-                            id="register-email"
-                            type="email"
-                            placeholder="you@example.com"
-                            value={formData.email}
-                            onChange={(e) => handleChange("email", e.target.value)}
-                            disabled={isLoading}
-                        />
-                        {errors.email && (
-                            <span style={{ color: "#f87171", fontSize: "12px", marginTop: "4px" }}>
-                                {errors.email}
-                            </span>
-                        )}
-                    </div>
-
-                    <div className="form-group">
-                        <label htmlFor="register-password">Password</label>
-
-                        <input
-                            id="register-password"
-                            type="password"
-                            placeholder="Create a password (min. 6 characters)"
-                            value={formData.password}
-                            onChange={(e) => handleChange("password", e.target.value)}
-                            disabled={isLoading}
-                        />
-                        {errors.password && (
-                            <span style={{ color: "#f87171", fontSize: "12px", marginTop: "4px" }}>
-                                {errors.password}
-                            </span>
-                        )}
-                    </div>
-
-                    <button
-                        className="register-submit"
-                        type="submit"
-                        disabled={isLoading}
-                        style={{ opacity: isLoading ? 0.7 : 1, cursor: isLoading ? "wait" : "pointer" }}
+                {devHint && (
+                    <div
+                        style={{
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            marginBottom: "14px",
+                            background: "rgba(37, 99, 235, 0.12)",
+                            color: "#93c5fd",
+                            border: "1px dashed rgba(37, 99, 235, 0.4)",
+                            fontFamily: "monospace",
+                        }}
                     >
-                        {isLoading ? "Creating Account..." : "Create Account"}
-                    </button>
+                        {devHint}
+                    </div>
+                )}
 
-                </form>
+                {step === "details" ? (
+                    <>
+                        {/* Google Sign Up */}
+                        <button
+                            type="button"
+                            className="google-auth-btn"
+                            onClick={handleGoogleSignIn}
+                            disabled={isLoading || isGoogleLoading}
+                        >
+                            {isGoogleLoading ? (
+                                <Loader2 size={18} className="spinner-icon" />
+                            ) : (
+                                <GoogleIcon />
+                            )}
+                            <span>{isGoogleLoading ? "Connecting to Google..." : "Continue with Google"}</span>
+                        </button>
+
+                        <div className="auth-divider">
+                            <span className="auth-divider-line" />
+                            <span className="auth-divider-text">or register with email</span>
+                            <span className="auth-divider-line" />
+                        </div>
+
+                        <form className="register-form" onSubmit={handleSendOtp} noValidate>
+                            <div className="form-group">
+                                <label htmlFor="name">Full name</label>
+                                <input
+                                    id="name"
+                                    type="text"
+                                    placeholder="Enter your name"
+                                    value={formData.name}
+                                    onChange={(e) => handleChange("name", e.target.value)}
+                                    disabled={isLoading}
+                                    autoComplete="name"
+                                />
+                                {errors.name && (
+                                    <span style={{ color: "#f87171", fontSize: "12px", marginTop: "4px" }}>
+                                        {errors.name}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="register-email">Email address</label>
+                                <input
+                                    id="register-email"
+                                    type="email"
+                                    placeholder="you@example.com"
+                                    value={formData.email}
+                                    onChange={(e) => handleChange("email", e.target.value)}
+                                    disabled={isLoading}
+                                    autoComplete="email"
+                                />
+                                {errors.email && (
+                                    <span style={{ color: "#f87171", fontSize: "12px", marginTop: "4px" }}>
+                                        {errors.email}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="register-password">Password</label>
+                                <input
+                                    id="register-password"
+                                    type="password"
+                                    placeholder="Create a password (min. 6 characters)"
+                                    value={formData.password}
+                                    onChange={(e) => handleChange("password", e.target.value)}
+                                    disabled={isLoading}
+                                    autoComplete="new-password"
+                                />
+                                {errors.password && (
+                                    <span style={{ color: "#f87171", fontSize: "12px", marginTop: "4px" }}>
+                                        {errors.password}
+                                    </span>
+                                )}
+                            </div>
+
+                            <button
+                                className="register-submit"
+                                type="submit"
+                                disabled={isLoading}
+                                style={{
+                                    opacity: isLoading ? 0.7 : 1,
+                                    cursor: isLoading ? "wait" : "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: "8px",
+                                }}
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 size={16} className="spinner-icon" />
+                                        <span>Sending Verification Code...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Mail size={16} />
+                                        <span>Send Verification Code</span>
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    </>
+                ) : (
+                    /* Step 2: OTP Verification */
+                    <form className="register-form" onSubmit={handleVerifyAndRegister} noValidate>
+                        <div className="otp-email-box">
+                            <div className="otp-email-content">
+                                <span className="otp-email-label">Code sent to:</span>
+                                <span className="otp-email-val">{formData.email}</span>
+                            </div>
+                            <button
+                                type="button"
+                                className="otp-change-email-btn"
+                                onClick={() => {
+                                    setStep("details");
+                                    setServerMessage(null);
+                                    setDevHint(null);
+                                }}
+                                title="Change email address"
+                            >
+                                <Edit3 size={13} />
+                                <span>Edit</span>
+                            </button>
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="otp-input">6-digit verification code</label>
+                            <div className="otp-input-wrap">
+                                <input
+                                    id="otp-input"
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    maxLength={6}
+                                    placeholder="123456"
+                                    value={otpCode}
+                                    onChange={(e) => {
+                                        const clean = e.target.value.replace(/\D/g, "").slice(0, 6);
+                                        setOtpCode(clean);
+                                        if (errors.otp) setErrors((prev) => ({ ...prev, otp: "" }));
+                                    }}
+                                    disabled={isLoading}
+                                    autoFocus
+                                    className="otp-digit-input"
+                                />
+                            </div>
+                            {errors.otp && (
+                                <span style={{ color: "#f87171", fontSize: "12px", marginTop: "4px" }}>
+                                    {errors.otp}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="otp-resend-row">
+                            {resendTimer > 0 ? (
+                                <span className="otp-timer-text">
+                                    Resend code in <strong>{resendTimer}s</strong>
+                                </span>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="otp-resend-btn"
+                                    onClick={handleResendOtp}
+                                    disabled={isLoading}
+                                >
+                                    Resend Verification Code
+                                </button>
+                            )}
+                        </div>
+
+                        <button
+                            className="register-submit"
+                            type="submit"
+                            disabled={isLoading || otpCode.length < 6}
+                            style={{
+                                opacity: isLoading || otpCode.length < 6 ? 0.7 : 1,
+                                cursor: isLoading ? "wait" : otpCode.length < 6 ? "not-allowed" : "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyCenter: "center",
+                                gap: "8px",
+                            }}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 size={16} className="spinner-icon" />
+                                    <span>Verifying Account...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <ShieldCheck size={16} />
+                                    <span>Verify & Create Account</span>
+                                </>
+                            )}
+                        </button>
+
+                        <button
+                            type="button"
+                            className="otp-back-btn"
+                            onClick={() => {
+                                setStep("details");
+                                setServerMessage(null);
+                                setDevHint(null);
+                            }}
+                            disabled={isLoading}
+                        >
+                            <ArrowLeft size={14} />
+                            <span>Back to registration</span>
+                        </button>
+                    </form>
+                )}
 
                 <div className="register-footer">
                     Already have an account?{" "}
@@ -251,7 +496,6 @@ function Register() {
                         Login
                     </Link>
                 </div>
-
             </div>
         </div>
     );
