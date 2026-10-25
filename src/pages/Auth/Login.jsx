@@ -89,19 +89,6 @@ function Login() {
         }
     };
 
-    const handleFillDemo = () => {
-        setFormData({
-            email: "analyst@datalens.io",
-            password: "DemoPassword123!",
-            rememberMe: true,
-        });
-        setErrors({});
-        setStatusMessage({
-            type: "info",
-            text: "Demo credentials filled! Click 'Login to DataLens' to continue.",
-        });
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setStatusMessage(null);
@@ -295,23 +282,6 @@ function Login() {
                             )}
                         </button>
                     </form>
-
-                    {/* Demo One-Click Access */}
-                    <div className="demo-access-box">
-                        <div className="demo-header">
-                            <span className="demo-line" />
-                            <span className="demo-title">Quick Demo Access</span>
-                            <span className="demo-line" />
-                        </div>
-                        <button
-                            type="button"
-                            className="demo-fill-btn"
-                            onClick={handleFillDemo}
-                            disabled={isLoading}
-                        >
-                            <span>Prefill Demo Credentials (analyst@datalens.io)</span>
-                        </button>
-                    </div>
 
                     {/* Footer */}
                     <div className="login-footer">

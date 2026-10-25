@@ -36,12 +36,6 @@ function ForgotPassword() {
     const handleEmailChange = (val) => {
         setEmail(val);
         if (error) setError("");
-        if (resendNotification) setResendNotification("");
-    };
-
-    const handleFillDemo = () => {
-        setEmail("analyst@datalens.io");
-        setError("");
     };
 
     const handleSubmit = async (e) => {
@@ -174,18 +168,6 @@ function ForgotPassword() {
                                     )}
                                 </button>
                             </form>
-
-                            {/* Quick fill demo option */}
-                            <div className="demo-access-box">
-                                <button
-                                    type="button"
-                                    className="demo-fill-btn"
-                                    onClick={handleFillDemo}
-                                    disabled={isLoading}
-                                >
-                                    <span>Prefill Test Email (analyst@datalens.io)</span>
-                                </button>
-                            </div>
                         </>
                     ) : (
                         /* Success / Link Dispatched State */
