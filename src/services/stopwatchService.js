@@ -184,6 +184,120 @@ export function formatShort(totalSeconds) {
     return `${s}s`;
 }
 
+/**
+ * Calculates current and longest consecutive daily tracking streaks.
+ * If user logged time today, current streak includes today.
+ * If user logged yesterday but not yet today, streak is held at risk so they can save it today.
+ */
+export function calculateStreaks(sessions = getAllSessions()) {
+    const today = new Date();
+    const todayKey = today.toISOString().split("T")[0];
+
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    const yesterdayKey = yesterday.toISOString().split("T")[0];
+
+    const todaySeconds = sessions[todayKey] || 0;
+    const yesterdaySeconds = sessions[yesterdayKey] || 0;
+
+    const isActiveToday = todaySeconds > 0;
+    let currentStreak;
+    let streakAtRisk = false;
+
+    let checkDate = new Date();
+    if (isActiveToday) {
+        currentStreak = 1;
+        checkDate.setDate(checkDate.getDate() - 1);
+    } else if (yesterdaySeconds > 0) {
+        currentStreak = 1;
+        streakAtRisk = true;
+        checkDate.setDate(checkDate.getDate() - 2);
+    } else {
+        currentStreak = 0;
+    }
+
+    if (currentStreak > 0) {
+        while (true) {
+            const key = checkDate.toISOString().split("T")[0];
+            if ((sessions[key] || 0) > 0) {
+                currentStreak++;
+                checkDate.setDate(checkDate.getDate() - 1);
+            } else {
+                break;
+            }
+        }
+    }
+
+    // Longest streak across history
+    const activeDates = Object.keys(sessions)
+        .filter((k) => (sessions[k] || 0) > 0)
+        .sort();
+
+    let longestStreak = currentStreak;
+    let tempStreak = 0;
+    let prevTimestamp = null;
+
+    for (const dateStr of activeDates) {
+        const [y, m, d] = dateStr.split("-").map(Number);
+        const curTimestamp = Date.UTC(y, m - 1, d);
+
+        if (prevTimestamp === null) {
+            tempStreak = 1;
+        } else {
+            const diffDays = Math.round((curTimestamp - prevTimestamp) / (1000 * 60 * 60 * 24));
+            if (diffDays === 1) {
+                tempStreak++;
+            } else if (diffDays > 1) {
+                tempStreak = 1;
+            }
+        }
+        prevTimestamp = curTimestamp;
+        if (tempStreak > longestStreak) {
+            longestStreak = tempStreak;
+        }
+    }
+
+    return {
+        currentStreak,
+        longestStreak: Math.max(longestStreak, currentStreak),
+        isActiveToday,
+        streakAtRisk,
+        totalActiveDays: activeDates.length,
+    };
+}
+
+export function getSavedSessionState() {
+    try {
+        const key = `${getStopwatchStorageKey()}_active_session`;
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (parsed.dayKey !== getTodayKey()) {
+            localStorage.removeItem(key);
+            return null;
+        }
+        return parsed;
+    } catch {
+        return null;
+    }
+}
+
+export function saveActiveSessionState(state) {
+    try {
+        const key = `${getStopwatchStorageKey()}_active_session`;
+        if (!state || (state.elapsed === 0 && !state.running)) {
+            localStorage.removeItem(key);
+        } else {
+            localStorage.setItem(
+                key,
+                JSON.stringify({ ...state, dayKey: getTodayKey(), savedAt: Date.now() })
+            );
+        }
+    } catch {
+        // Ignored
+    }
+}
+
 // Initial background sync if user has token
 setTimeout(() => {
     syncTimeSessionsWithBackend();

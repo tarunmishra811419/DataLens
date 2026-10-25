@@ -1,6 +1,19 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { BarChart2, TrendingUp } from "lucide-react";
+import {
+    BarChart2,
+    TrendingUp,
+    Play,
+    Pause,
+    Square,
+    RotateCcw,
+    Flame,
+    CheckCircle2,
+    AlertCircle,
+    Award,
+    Calendar,
+    Clock,
+} from "lucide-react";
 import {
     formatTime,
     formatShort,
@@ -10,6 +23,10 @@ import {
     clearDay,
     clearAllSessions,
     getTodayKey,
+    calculateStreaks,
+    getAllSessions,
+    getSavedSessionState,
+    saveActiveSessionState,
 } from "../../services/stopwatchService";
 import { getAuthSession } from "../../services/authService";
 import "./Stopwatch.css";
@@ -20,9 +37,14 @@ function Stopwatch() {
     const user = session?.user;
     const userInitial = user?.name ? user.name.charAt(0).toUpperCase() : "A";
 
-    // ── Timer state ──────────────────────────────────────────────────────────
-    const [running, setRunning] = useState(false);
-    const [elapsed, setElapsed] = useState(0);          // seconds in current session
+    // ── Timer state (restores saved session if refreshed) ───────────────────
+    const initialSession = getSavedSessionState();
+
+    const [running, setRunning] = useState(() => initialSession?.running || false);
+    const [paused, setPaused] = useState(
+        () => initialSession?.paused || (initialSession?.elapsed > 0 && !initialSession?.running)
+    );
+    const [elapsed, setElapsed] = useState(() => initialSession?.elapsed || 0); // seconds in current session
     const [todayTotal, setTodayTotal] = useState(() => getSecondsForDay());
     const intervalRef = useRef(null);
     const startTsRef = useRef(null);
@@ -62,31 +84,45 @@ function Stopwatch() {
             intervalRef.current = setInterval(() => {
                 const secs = Math.floor((Date.now() - startTsRef.current) / 1000);
                 setElapsed(secs);
+                saveActiveSessionState({ elapsed: secs, running: true, paused: false });
             }, 500);
         } else {
             clearInterval(intervalRef.current);
+            saveActiveSessionState({ elapsed, running: false, paused });
         }
         return () => clearInterval(intervalRef.current);
-    }, [running, elapsed]);
+    }, [running, paused, elapsed]);
 
     // ── Controls ─────────────────────────────────────────────────────────────
     const handleStart = () => {
         setRunning(true);
-        showToast("Timer started", "info");
+        setPaused(false);
+        showToast(elapsed > 0 ? "Timer resumed" : "Timer started", "info");
+    };
+
+    const handlePause = () => {
+        setRunning(false);
+        setPaused(true);
+        showToast(`Timer paused at ${formatTime(elapsed)}`, "info");
     };
 
     const handleStop = () => {
         setRunning(false);
+        setPaused(false);
         if (elapsed > 0) {
             addSecondsToDay(elapsed);
             showToast(`Saved ${formatShort(elapsed)} to today's log`, "success");
             setElapsed(0);
+            saveActiveSessionState(null);
         }
     };
 
     const handleReset = () => {
         setRunning(false);
+        setPaused(false);
         setElapsed(0);
+        saveActiveSessionState(null);
+        showToast("Session reset to 00:00:00", "info");
     };
 
     const handleClearToday = () => {
@@ -122,6 +158,33 @@ function Stopwatch() {
     const totalTracked = days.reduce((a, d) => a + d.seconds, 0);
     const activeDays = days.filter((d) => d.seconds > 0).length;
     const avgPerDay = activeDays > 0 ? Math.round(totalTracked / activeDays) : 0;
+
+    // ── Streak Calculations ───────────────────────────────────────────────────
+    const streakInfo = useMemo(() => {
+        const sessions = getAllSessions();
+        if (days.length === 0 && todayTotal === 0) {
+            return calculateStreaks(sessions);
+        }
+        return calculateStreaks(sessions);
+    }, [days, todayTotal]);
+
+    // Last 7 days visual streak indicators
+    const streakWeekDays = useMemo(() => {
+        const sessions = getAllSessions();
+        if (days.length < 0 || todayTotal < 0) return [];
+        const res = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const key = d.toISOString().split("T")[0];
+            const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
+            const dayNum = d.getDate();
+            const isToday = i === 0;
+            const hasLogged = (sessions[key] || 0) > 0;
+            res.push({ key, dayName, dayNum, isToday, hasLogged, seconds: sessions[key] || 0 });
+        }
+        return res;
+    }, [days, todayTotal]);
 
     // ── Line Chart Coordinates ────────────────────────────────────────────────
     const lineChartData = useMemo(() => {
@@ -265,46 +328,108 @@ function Stopwatch() {
                     </div>
                 </header>
 
-                {/* ── Top row: Timer + Ring ─────────────────────────────────── */}
+                {/* ── Top row: Timer + Ring + Stats ───────────────────────── */}
                 <section className="sw-top-row">
                     {/* Big Timer Card */}
                     <div className="sw-timer-card">
-                        <div className="sw-timer-label">Current Session</div>
-                        <div className={`sw-timer-display ${running ? "sw-timer-running" : ""}`}>
+                        <div className="sw-timer-header-badge">
+                            <span className="sw-timer-label">Current Session</span>
+                            {running ? (
+                                <span className="sw-status-pill sw-status-running">
+                                    <span className="sw-status-pulse" />
+                                    Tracking
+                                </span>
+                            ) : paused ? (
+                                <span className="sw-status-pill sw-status-paused">
+                                    <Pause size={10} fill="currentColor" />
+                                    Paused
+                                </span>
+                            ) : (
+                                <span className="sw-status-pill sw-status-ready">
+                                    Ready
+                                </span>
+                            )}
+                        </div>
+
+                        <div className={`sw-timer-display ${running ? "sw-timer-running" : paused ? "sw-timer-paused" : ""}`}>
                             {formatTime(elapsed)}
                         </div>
 
                         <div className="sw-timer-controls">
-                            {!running ? (
+                            {!running && !paused && (
                                 <button
                                     id="sw-start-btn"
                                     className="sw-btn sw-btn-start"
                                     onClick={handleStart}
                                 >
-                                    Start Session
-                                </button>
-                            ) : (
-                                <button
-                                    id="sw-stop-btn"
-                                    className="sw-btn sw-btn-stop"
-                                    onClick={handleStop}
-                                >
-                                    Stop & Save
+                                    <Play size={16} fill="currentColor" />
+                                    <span>Start Session</span>
                                 </button>
                             )}
+
+                            {running && (
+                                <>
+                                    <button
+                                        id="sw-pause-btn"
+                                        className="sw-btn sw-btn-pause"
+                                        onClick={handlePause}
+                                        title="Pause stopwatch (time is preserved)"
+                                    >
+                                        <Pause size={16} fill="currentColor" />
+                                        <span>Pause</span>
+                                    </button>
+                                    <button
+                                        id="sw-stop-btn"
+                                        className="sw-btn sw-btn-stop"
+                                        onClick={handleStop}
+                                        title="Stop & save session to today's log"
+                                    >
+                                        <Square size={16} fill="currentColor" />
+                                        <span>Stop & Save</span>
+                                    </button>
+                                </>
+                            )}
+
+                            {paused && (
+                                <>
+                                    <button
+                                        id="sw-resume-btn"
+                                        className="sw-btn sw-btn-resume"
+                                        onClick={handleStart}
+                                        title="Resume timer without starting from 0"
+                                    >
+                                        <Play size={16} fill="currentColor" />
+                                        <span>Resume</span>
+                                    </button>
+                                    <button
+                                        id="sw-stop-btn"
+                                        className="sw-btn sw-btn-stop"
+                                        onClick={handleStop}
+                                        title="Stop & save accumulated session"
+                                    >
+                                        <Square size={16} fill="currentColor" />
+                                        <span>Stop & Save</span>
+                                    </button>
+                                </>
+                            )}
+
                             <button
                                 id="sw-reset-btn"
                                 className="sw-btn sw-btn-reset"
                                 onClick={handleReset}
-                                disabled={running}
+                                disabled={running || elapsed === 0}
+                                title="Reset session to 0"
                             >
-                                Reset
+                                <RotateCcw size={15} />
+                                <span>Reset</span>
                             </button>
                         </div>
 
                         <p className="sw-timer-hint">
                             {running
-                                ? "Timer is running: click Stop & Save to log this session"
+                                ? "Timer is running. Click Pause to take a break without losing your time, or Stop & Save to log."
+                                : paused
+                                ? `Session paused at ${formatShort(elapsed)}. Click Resume to continue without starting from 0.`
                                 : "Click Start Session to begin tracking work"}
                         </p>
                     </div>
@@ -355,16 +480,35 @@ function Stopwatch() {
                         </div>
                     </div>
 
-                    {/* Quick Stats */}
+                    {/* Quick Stats Column */}
                     <div className="sw-stats-col">
+                        {/* Daily Streak Stat Card */}
+                        <div className="sw-stat-card sw-stat-card-streak">
+                            <div className="sw-stat-icon-wrap sw-stat-icon-streak">
+                                <Flame size={18} className="sw-streak-icon-flame" />
+                            </div>
+                            <div className="sw-stat-text-wrap">
+                                <div className="sw-stat-streak-val">
+                                    <strong>{streakInfo.currentStreak} Day{streakInfo.currentStreak === 1 ? "" : "s"}</strong>
+                                    {streakInfo.isActiveToday ? (
+                                        <span className="sw-streak-tag sw-streak-tag-active">🔥 Active</span>
+                                    ) : streakInfo.streakAtRisk ? (
+                                        <span className="sw-streak-tag sw-streak-tag-risk">⚠️ At Risk</span>
+                                    ) : null}
+                                </div>
+                                <small>
+                                    {streakInfo.streakAtRisk
+                                        ? "Log today to keep streak!"
+                                        : streakInfo.isActiveToday
+                                        ? `Best: ${streakInfo.longestStreak} days`
+                                        : "Start streak today"}
+                                </small>
+                            </div>
+                        </div>
+
                         <div className="sw-stat-card">
                             <div className="sw-stat-icon-wrap">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                                    <line x1="16" y1="2" x2="16" y2="6" />
-                                    <line x1="8" y1="2" x2="8" y2="6" />
-                                    <line x1="3" y1="10" x2="21" y2="10" />
-                                </svg>
+                                <Calendar size={18} color="#3b82f6" />
                             </div>
                             <div>
                                 <strong>{activeDays}</strong>
@@ -374,10 +518,7 @@ function Stopwatch() {
 
                         <div className="sw-stat-card">
                             <div className="sw-stat-icon-wrap">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="12" r="10" />
-                                    <polyline points="12 6 12 12 16 14" />
-                                </svg>
+                                <Clock size={18} color="#3b82f6" />
                             </div>
                             <div>
                                 <strong>{formatShort(totalTracked)}</strong>
@@ -387,32 +528,86 @@ function Stopwatch() {
 
                         <div className="sw-stat-card">
                             <div className="sw-stat-icon-wrap">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="18" y1="20" x2="18" y2="10" />
-                                    <line x1="12" y1="20" x2="12" y2="4" />
-                                    <line x1="6" y1="20" x2="6" y2="14" />
-                                </svg>
+                                <Award size={18} color="#3b82f6" />
                             </div>
                             <div>
                                 <strong>{formatShort(avgPerDay)}</strong>
                                 <small>Daily active average</small>
                             </div>
                         </div>
+                    </div>
+                </section>
 
-                        <div className="sw-stat-card">
-                            <div className="sw-stat-icon-wrap">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                                    <polyline points="17 6 23 6 23 12" />
-                                </svg>
+                {/* ── Daily Streak & Consistency Tracker Banner ─────────────── */}
+                <section className="sw-streak-banner">
+                    <div className="sw-streak-header">
+                        <div className="sw-streak-title-wrap">
+                            <div className="sw-streak-flame-icon">
+                                <Flame size={22} className="sw-flame-svg" />
                             </div>
                             <div>
-                                <strong>
-                                    {formatShort(Math.max(...days.map((d) => d.seconds)))}
-                                </strong>
-                                <small>Peak session day</small>
+                                <div className="sw-streak-title-row">
+                                    <h2 className="sw-streak-heading">
+                                        {streakInfo.currentStreak} Day{streakInfo.currentStreak === 1 ? "" : "s"} Tracking Streak
+                                    </h2>
+                                    {streakInfo.isActiveToday ? (
+                                        <span className="sw-streak-pill sw-streak-pill-active">
+                                            <CheckCircle2 size={13} /> Streak Active
+                                        </span>
+                                    ) : streakInfo.streakAtRisk ? (
+                                        <span className="sw-streak-pill sw-streak-pill-warning">
+                                            <AlertCircle size={13} /> At Risk: Log today to maintain!
+                                        </span>
+                                    ) : (
+                                        <span className="sw-streak-pill sw-streak-pill-idle">
+                                            Start your streak today
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="sw-streak-desc">
+                                    {streakInfo.streakAtRisk
+                                        ? "You tracked time yesterday! Log a session today so your streak doesn't reset."
+                                        : streakInfo.isActiveToday
+                                        ? `Great consistency! You've logged ${formatShort(todayTotal)} today. Personal best: ${streakInfo.longestStreak} days.`
+                                        : "Track time every day to build a habit and grow your productivity streak."}
+                                </p>
                             </div>
                         </div>
+
+                        <div className="sw-streak-metrics">
+                            <div className="sw-streak-metric-box">
+                                <span className="sw-streak-metric-val">{streakInfo.longestStreak}d</span>
+                                <span className="sw-streak-metric-lbl">Best Streak</span>
+                            </div>
+                            <div className="sw-streak-metric-divider" />
+                            <div className="sw-streak-metric-box">
+                                <span className="sw-streak-metric-val">{streakInfo.totalActiveDays}d</span>
+                                <span className="sw-streak-metric-lbl">Total Days Logged</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 7-Day Consistency Matrix */}
+                    <div className="sw-streak-week-grid">
+                        {streakWeekDays.map((d) => (
+                            <div
+                                key={d.key}
+                                className={`sw-week-cell ${d.isToday ? "sw-week-cell-today" : ""} ${d.hasLogged ? "sw-week-cell-active" : ""}`}
+                                title={`${d.key}: ${d.hasLogged ? formatShort(d.seconds) : "No session recorded"}`}
+                            >
+                                <span className="sw-week-day-title">{d.dayName}</span>
+                                <div className="sw-week-icon-box">
+                                    {d.hasLogged ? (
+                                        <Flame size={16} className="sw-week-active-flame" />
+                                    ) : (
+                                        <span className="sw-week-cell-date">{d.dayNum}</span>
+                                    )}
+                                </div>
+                                <span className="sw-week-day-time">
+                                    {d.hasLogged ? formatShort(d.seconds) : "—"}
+                                </span>
+                            </div>
+                        ))}
                     </div>
                 </section>
 
