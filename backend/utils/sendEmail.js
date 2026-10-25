@@ -70,10 +70,10 @@ function getOtpHtmlTemplate(otp, name) {
                     <!-- Body -->
                     <tr>
                         <td style="padding: 32px 36px;">
-                            <h1 style="margin: 0 0 12px; font-size: 22px; font-weight: 700; color: #ffffff;">Confirm your email address</h1>
+                            <h1 style="margin: 0 0 12px; font-size: 22px; font-weight: 700; color: #ffffff;">Verify your identity</h1>
                             <p style="margin: 0 0 24px; font-size: 14px; line-height: 1.6; color: #94a3b8;">
                                 Hello ${name ? name : "there"},<br>
-                                Thank you for creating an account with DataLens. Use the 6-digit verification code below to complete your registration:
+                                Use the 6-digit verification code below to continue with DataLens:
                             </p>
 
                             <!-- OTP Box -->

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
     Mail,
@@ -10,10 +10,12 @@ import {
     AlertCircle,
     CheckCircle2,
     Loader2,
-    Info
+    Info,
+    ShieldCheck,
+    RefreshCw,
 } from "lucide-react";
 import { validateLoginForm } from "../../utils/validators";
-import { loginUser } from "../../services/authService";
+import { loginUser, loginVerifyOtp, resendLoginOtp } from "../../services/authService";
 import { signInWithGoogle } from "../../services/googleAuthService";
 import "./Login.css";
 
@@ -38,8 +40,264 @@ const GoogleIcon = () => (
     </svg>
 );
 
+// ─── OTP Verification Step ───────────────────────────────────────
+function OtpVerificationStep({
+    email,
+    simulated,
+    devOtp,
+    onVerified,
+    onBack,
+    rememberMe,
+}) {
+    const OTP_LENGTH = 6;
+    const RESEND_COOLDOWN = 30; // seconds
+
+    const [otpDigits, setOtpDigits] = useState(Array(OTP_LENGTH).fill(""));
+    const [isVerifying, setIsVerifying] = useState(false);
+    const [isResending, setIsResending] = useState(false);
+    const [statusMessage, setStatusMessage] = useState(
+        simulated && devOtp
+            ? { type: "info", text: `Development mode — use code: ${devOtp}` }
+            : null
+    );
+    const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN);
+    const inputRefs = useRef([]);
+
+    // Resend cooldown timer
+    useEffect(() => {
+        if (resendCooldown <= 0) return;
+        const timer = setInterval(() => {
+            setResendCooldown((prev) => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [resendCooldown]);
+
+    // Focus first input on mount
+    useEffect(() => {
+        inputRefs.current[0]?.focus();
+    }, []);
+
+    const handleDigitChange = (index, value) => {
+        // Only allow single digit
+        const digit = value.replace(/\D/g, "").slice(-1);
+        const newDigits = [...otpDigits];
+        newDigits[index] = digit;
+        setOtpDigits(newDigits);
+
+        if (statusMessage?.type === "error") setStatusMessage(null);
+
+        // Auto-focus next input
+        if (digit && index < OTP_LENGTH - 1) {
+            inputRefs.current[index + 1]?.focus();
+        }
+
+        // Auto-submit if all filled
+        if (digit && index === OTP_LENGTH - 1 && newDigits.every((d) => d)) {
+            handleVerify(newDigits.join(""));
+        }
+    };
+
+    const handleKeyDown = (index, e) => {
+        if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
+            inputRefs.current[index - 1]?.focus();
+        }
+        if (e.key === "ArrowLeft" && index > 0) {
+            inputRefs.current[index - 1]?.focus();
+        }
+        if (e.key === "ArrowRight" && index < OTP_LENGTH - 1) {
+            inputRefs.current[index + 1]?.focus();
+        }
+    };
+
+    const handlePaste = (e) => {
+        e.preventDefault();
+        const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
+        if (!pasted) return;
+        const newDigits = [...otpDigits];
+        for (let i = 0; i < pasted.length; i++) {
+            newDigits[i] = pasted[i];
+        }
+        setOtpDigits(newDigits);
+        // Focus the next empty or last input
+        const nextEmpty = newDigits.findIndex((d) => !d);
+        inputRefs.current[nextEmpty >= 0 ? nextEmpty : OTP_LENGTH - 1]?.focus();
+
+        // Auto-submit if all filled
+        if (newDigits.every((d) => d)) {
+            handleVerify(newDigits.join(""));
+        }
+    };
+
+    const handleVerify = useCallback(
+        async (code) => {
+            const otpCode = code || otpDigits.join("");
+            if (otpCode.length !== OTP_LENGTH) {
+                setStatusMessage({ type: "error", text: "Please enter all 6 digits" });
+                return;
+            }
+
+            setIsVerifying(true);
+            setStatusMessage(null);
+
+            try {
+                const result = await loginVerifyOtp(email, otpCode, rememberMe);
+                if (result.success) {
+                    setStatusMessage({ type: "success", text: "Verified! Redirecting to dashboard..." });
+                    onVerified(result);
+                }
+            } catch (err) {
+                setStatusMessage({
+                    type: "error",
+                    text: err.message || "Invalid verification code",
+                });
+                // Clear digits on error
+                setOtpDigits(Array(OTP_LENGTH).fill(""));
+                inputRefs.current[0]?.focus();
+            } finally {
+                setIsVerifying(false);
+            }
+        },
+        [email, otpDigits, rememberMe, onVerified]
+    );
+
+    const handleResend = async () => {
+        if (resendCooldown > 0 || isResending) return;
+
+        setIsResending(true);
+        setStatusMessage(null);
+
+        try {
+            const result = await resendLoginOtp(email);
+            setResendCooldown(RESEND_COOLDOWN);
+            setOtpDigits(Array(OTP_LENGTH).fill(""));
+            inputRefs.current[0]?.focus();
+
+            if (result.simulated && result.devOtp) {
+                setStatusMessage({
+                    type: "info",
+                    text: `New code sent (Dev mode — use: ${result.devOtp})`,
+                });
+            } else {
+                setStatusMessage({
+                    type: "success",
+                    text: result.message || "New verification code sent!",
+                });
+            }
+        } catch (err) {
+            setStatusMessage({
+                type: "error",
+                text: err.message || "Failed to resend code",
+            });
+        } finally {
+            setIsResending(false);
+        }
+    };
+
+    return (
+        <div className="otp-step-wrapper">
+            {/* Shield Icon */}
+            <div className="otp-icon-wrapper">
+                <ShieldCheck size={32} className="otp-shield-icon" />
+            </div>
+
+            <h2 className="otp-step-title">Verify your identity</h2>
+            <p className="otp-step-subtitle">
+                We've sent a 6-digit verification code to{" "}
+                <strong className="otp-email-highlight">{email}</strong>
+            </p>
+
+            {/* Status Message */}
+            {statusMessage && (
+                <div className={`login-alert alert-${statusMessage.type}`}>
+                    {statusMessage.type === "error" && <AlertCircle size={18} className="alert-icon" />}
+                    {statusMessage.type === "success" && <CheckCircle2 size={18} className="alert-icon" />}
+                    {statusMessage.type === "info" && <Info size={18} className="alert-icon" />}
+                    <span>{statusMessage.text}</span>
+                </div>
+            )}
+
+            {/* OTP Digit Inputs */}
+            <div className="otp-input-grid" onPaste={handlePaste}>
+                {otpDigits.map((digit, i) => (
+                    <input
+                        key={i}
+                        ref={(el) => (inputRefs.current[i] = el)}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleDigitChange(i, e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(i, e)}
+                        className={`otp-digit-input ${digit ? "filled" : ""} ${statusMessage?.type === "error" ? "has-error" : ""}`}
+                        disabled={isVerifying}
+                        autoComplete="one-time-code"
+                    />
+                ))}
+            </div>
+
+            {/* Verify Button */}
+            <button
+                className="login-submit-btn otp-verify-btn"
+                onClick={() => handleVerify()}
+                disabled={isVerifying || otpDigits.some((d) => !d)}
+            >
+                {isVerifying ? (
+                    <>
+                        <Loader2 size={18} className="spinner-icon" />
+                        <span>Verifying...</span>
+                    </>
+                ) : (
+                    <>
+                        <ShieldCheck size={18} />
+                        <span>Verify & Sign In</span>
+                    </>
+                )}
+            </button>
+
+            {/* Resend & Back Actions */}
+            <div className="otp-actions-row">
+                <button
+                    type="button"
+                    className="otp-resend-btn"
+                    onClick={handleResend}
+                    disabled={resendCooldown > 0 || isResending}
+                >
+                    {isResending ? (
+                        <Loader2 size={14} className="spinner-icon" />
+                    ) : (
+                        <RefreshCw size={14} />
+                    )}
+                    <span>
+                        {resendCooldown > 0
+                            ? `Resend in ${resendCooldown}s`
+                            : "Resend code"}
+                    </span>
+                </button>
+
+                <button type="button" className="otp-back-btn" onClick={onBack}>
+                    <ArrowLeft size={14} />
+                    <span>Use different credentials</span>
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// ─── Main Login Component ────────────────────────────────────────
 function Login() {
     const navigate = useNavigate();
+
+    // Step: "credentials" or "otp"
+    const [step, setStep] = useState("credentials");
+    const [pendingEmail, setPendingEmail] = useState("");
+    const [otpSimulated, setOtpSimulated] = useState(false);
+    const [otpDevCode, setOtpDevCode] = useState("");
 
     const [formData, setFormData] = useState({
         email: "",
@@ -51,7 +309,7 @@ function Login() {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-    const [statusMessage, setStatusMessage] = useState(null); // { type: 'error' | 'success' | 'info', text: '' }
+    const [statusMessage, setStatusMessage] = useState(null);
 
     const handleGoogleSignIn = async () => {
         setIsGoogleLoading(true);
@@ -80,7 +338,6 @@ function Login() {
 
     const handleChange = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
-        // Clear field error when user types
         if (errors[field]) {
             setErrors((prev) => ({ ...prev, [field]: "" }));
         }
@@ -110,14 +367,22 @@ function Login() {
             const result = await loginUser(formData.email, formData.password, formData.rememberMe);
 
             if (result.success) {
-                setStatusMessage({
-                    type: "success",
-                    text: result.notice || "Welcome back! Redirecting to your dashboard...",
-                });
-
-                setTimeout(() => {
-                    navigate("/dashboard");
-                }, 900);
+                // Check if OTP step is required
+                if (result.pendingOtp) {
+                    setPendingEmail(result.email);
+                    setOtpSimulated(!!result.simulated);
+                    setOtpDevCode(result.devOtp || "");
+                    setStep("otp");
+                } else {
+                    // Direct login (demo/offline mode)
+                    setStatusMessage({
+                        type: "success",
+                        text: result.notice || "Welcome back! Redirecting to your dashboard...",
+                    });
+                    setTimeout(() => {
+                        navigate("/dashboard");
+                    }, 900);
+                }
             }
         } catch (err) {
             setStatusMessage({
@@ -127,6 +392,20 @@ function Login() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleOtpVerified = () => {
+        setTimeout(() => {
+            navigate("/dashboard");
+        }, 800);
+    };
+
+    const handleBackToCredentials = () => {
+        setStep("credentials");
+        setPendingEmail("");
+        setOtpSimulated(false);
+        setOtpDevCode("");
+        setStatusMessage(null);
     };
 
     return (
@@ -156,132 +435,146 @@ function Login() {
                         </div>
                     </div>
 
-                    {/* Heading */}
-                    <div className="login-heading">
-                        <h1>Welcome back</h1>
-                        <p>Sign in to access your datasets, analytics, and AI insights.</p>
-                    </div>
-
-                    {/* Notification Banner */}
-                    {statusMessage && (
-                        <div className={`login-alert alert-${statusMessage.type}`}>
-                            {statusMessage.type === "error" && <AlertCircle size={18} className="alert-icon" />}
-                            {statusMessage.type === "success" && <CheckCircle2 size={18} className="alert-icon" />}
-                            {statusMessage.type === "info" && <Info size={18} className="alert-icon" />}
-                            <span>{statusMessage.text}</span>
-                        </div>
-                    )}
-
-                    {/* Google Sign In */}
-                    <button
-                        type="button"
-                        className="google-auth-btn"
-                        onClick={handleGoogleSignIn}
-                        disabled={isLoading || isGoogleLoading}
-                    >
-                        {isGoogleLoading ? (
-                            <Loader2 size={18} className="spinner-icon" />
-                        ) : (
-                            <GoogleIcon />
-                        )}
-                        <span>{isGoogleLoading ? "Connecting to Google..." : "Continue with Google"}</span>
-                    </button>
-
-                    <div className="auth-divider">
-                        <span className="auth-divider-line" />
-                        <span className="auth-divider-text">or continue with email</span>
-                        <span className="auth-divider-line" />
-                    </div>
-
-                    {/* Form */}
-                    <form className="login-form" onSubmit={handleSubmit} noValidate>
-                        {/* Email Input */}
-                        <div className={`form-group ${errors.email ? "has-error" : ""}`}>
-                            <div className="label-row">
-                                <label htmlFor="email">Email address</label>
+                    {step === "credentials" ? (
+                        <>
+                            {/* Heading */}
+                            <div className="login-heading">
+                                <h1>Welcome back</h1>
+                                <p>Sign in to access your datasets, analytics, and AI insights.</p>
                             </div>
-                            <div className="input-wrapper">
-                                <Mail size={18} className="input-icon" />
-                                <input
-                                    id="email"
-                                    type="email"
-                                    autoComplete="email"
-                                    value={formData.email}
-                                    onChange={(e) => handleChange("email", e.target.value)}
-                                    placeholder="name@company.com"
-                                    disabled={isLoading}
-                                    required
-                                />
-                            </div>
-                            {errors.email && <span className="field-error">{errors.email}</span>}
-                        </div>
 
-                        {/* Password Input */}
-                        <div className={`form-group ${errors.password ? "has-error" : ""}`}>
-                            <div className="label-row">
-                                <label htmlFor="password">Password</label>
-                                <Link to="/forgot-password" className="forgot-password-link">
-                                    Forgot password?
-                                </Link>
-                            </div>
-                            <div className="input-wrapper">
-                                <Lock size={18} className="input-icon" />
-                                <input
-                                    id="password"
-                                    type={showPassword ? "text" : "password"}
-                                    autoComplete="current-password"
-                                    value={formData.password}
-                                    onChange={(e) => handleChange("password", e.target.value)}
-                                    placeholder="Enter your password"
-                                    disabled={isLoading}
-                                    required
-                                />
-                                <button
-                                    type="button"
-                                    className="password-toggle-btn"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    tabIndex={-1}
-                                    aria-label={showPassword ? "Hide password" : "Show password"}
-                                >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                </button>
-                            </div>
-                            {errors.password && <span className="field-error">{errors.password}</span>}
-                        </div>
-
-                        {/* Options row: Remember Me */}
-                        <div className="login-options-row">
-                            <label className="remember-me-label">
-                                <input
-                                    type="checkbox"
-                                    checked={formData.rememberMe}
-                                    onChange={(e) => handleChange("rememberMe", e.target.checked)}
-                                    disabled={isLoading}
-                                />
-                                <span className="custom-checkbox" />
-                                <span>Remember me for 30 days</span>
-                            </label>
-                        </div>
-
-                        {/* Submit Button */}
-                        <button
-                            className="login-submit-btn"
-                            type="submit"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 size={18} className="spinner-icon" />
-                                    <span>Authenticating...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <span>Sign In to DataLens</span>
-                                    <ArrowRight size={18} className="btn-arrow" />
-                                </>
+                            {/* Notification Banner */}
+                            {statusMessage && (
+                                <div className={`login-alert alert-${statusMessage.type}`}>
+                                    {statusMessage.type === "error" && <AlertCircle size={18} className="alert-icon" />}
+                                    {statusMessage.type === "success" && <CheckCircle2 size={18} className="alert-icon" />}
+                                    {statusMessage.type === "info" && <Info size={18} className="alert-icon" />}
+                                    <span>{statusMessage.text}</span>
+                                </div>
                             )}
-                        </button>
-                    </form>
+
+                            {/* Google Sign In */}
+                            <button
+                                type="button"
+                                className="google-auth-btn"
+                                onClick={handleGoogleSignIn}
+                                disabled={isLoading || isGoogleLoading}
+                            >
+                                {isGoogleLoading ? (
+                                    <Loader2 size={18} className="spinner-icon" />
+                                ) : (
+                                    <GoogleIcon />
+                                )}
+                                <span>{isGoogleLoading ? "Connecting to Google..." : "Continue with Google"}</span>
+                            </button>
+
+                            <div className="auth-divider">
+                                <span className="auth-divider-line" />
+                                <span className="auth-divider-text">or continue with email</span>
+                                <span className="auth-divider-line" />
+                            </div>
+
+                            {/* Form */}
+                            <form className="login-form" onSubmit={handleSubmit} noValidate>
+                                {/* Email Input */}
+                                <div className={`form-group ${errors.email ? "has-error" : ""}`}>
+                                    <div className="label-row">
+                                        <label htmlFor="email">Email address</label>
+                                    </div>
+                                    <div className="input-wrapper">
+                                        <Mail size={18} className="input-icon" />
+                                        <input
+                                            id="email"
+                                            type="email"
+                                            autoComplete="email"
+                                            value={formData.email}
+                                            onChange={(e) => handleChange("email", e.target.value)}
+                                            placeholder="name@company.com"
+                                            disabled={isLoading}
+                                            required
+                                        />
+                                    </div>
+                                    {errors.email && <span className="field-error">{errors.email}</span>}
+                                </div>
+
+                                {/* Password Input */}
+                                <div className={`form-group ${errors.password ? "has-error" : ""}`}>
+                                    <div className="label-row">
+                                        <label htmlFor="password">Password</label>
+                                        <Link to="/forgot-password" className="forgot-password-link">
+                                            Forgot password?
+                                        </Link>
+                                    </div>
+                                    <div className="input-wrapper">
+                                        <Lock size={18} className="input-icon" />
+                                        <input
+                                            id="password"
+                                            type={showPassword ? "text" : "password"}
+                                            autoComplete="current-password"
+                                            value={formData.password}
+                                            onChange={(e) => handleChange("password", e.target.value)}
+                                            placeholder="Enter your password"
+                                            disabled={isLoading}
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            className="password-toggle-btn"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            tabIndex={-1}
+                                            aria-label={showPassword ? "Hide password" : "Show password"}
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
+                                    {errors.password && <span className="field-error">{errors.password}</span>}
+                                </div>
+
+                                {/* Options row: Remember Me */}
+                                <div className="login-options-row">
+                                    <label className="remember-me-label">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.rememberMe}
+                                            onChange={(e) => handleChange("rememberMe", e.target.checked)}
+                                            disabled={isLoading}
+                                        />
+                                        <span className="custom-checkbox" />
+                                        <span>Remember me for 30 days</span>
+                                    </label>
+                                </div>
+
+                                {/* Submit Button */}
+                                <button
+                                    className="login-submit-btn"
+                                    type="submit"
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <Loader2 size={18} className="spinner-icon" />
+                                            <span>Authenticating...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>Sign In to DataLens</span>
+                                            <ArrowRight size={18} className="btn-arrow" />
+                                        </>
+                                    )}
+                                </button>
+                            </form>
+                        </>
+                    ) : (
+                        /* ─── OTP Verification Step ─── */
+                        <OtpVerificationStep
+                            email={pendingEmail}
+                            simulated={otpSimulated}
+                            devOtp={otpDevCode}
+                            onVerified={handleOtpVerified}
+                            onBack={handleBackToCredentials}
+                            rememberMe={formData.rememberMe}
+                        />
+                    )}
 
                     {/* Footer */}
                     <div className="login-footer">

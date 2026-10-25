@@ -13,6 +13,11 @@ const otpSchema = new mongoose.Schema(
             type: String,
             required: [true, "OTP is required"],
         },
+        purpose: {
+            type: String,
+            enum: ["register", "login"],
+            default: "register",
+        },
         expiresAt: {
             type: Date,
             required: true,

@@ -64,8 +64,9 @@ export function clearAuthSession() {
 }
 
 /**
- * Log in a user with email and password.
- * Attempts backend connection first, falls back to demo session if offline.
+ * Log in a user - Step 1: Validate credentials and send OTP.
+ * Returns { pendingOtp: true, email } on success so the UI can show the OTP input.
+ * Falls back to demo session if offline (skipping OTP).
  */
 export async function loginUser(email, password, rememberMe = true) {
     const controller = new AbortController();
@@ -86,6 +87,19 @@ export async function loginUser(email, password, rememberMe = true) {
             throw new Error(data.message || "Failed to log in");
         }
 
+        // Server returns pendingOtp: true  →  OTP has been sent
+        if (data.pendingOtp) {
+            return {
+                success: true,
+                pendingOtp: true,
+                email: data.email,
+                message: data.message,
+                simulated: data.simulated,
+                devOtp: data.devOtp,
+            };
+        }
+
+        // Fallback: if server returns token directly (shouldn't normally happen)
         const user = { _id: data._id, name: data.name, email: data.email };
         setAuthSession(user, data.token, rememberMe);
         return { success: true, user, token: data.token, isDemo: false };
@@ -99,7 +113,7 @@ export async function loginUser(email, password, rememberMe = true) {
             err.message.includes("NetworkError");
 
         if (isNetworkError) {
-            // Offline demo fallback
+            // Offline demo fallback - skip OTP for demo mode
             const demoUser = {
                 _id: "demo-" + Date.now(),
                 name: email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) || "Data Analyst",
@@ -117,6 +131,71 @@ export async function loginUser(email, password, rememberMe = true) {
             };
         }
 
+        throw err;
+    }
+}
+
+/**
+ * Log in a user - Step 2: Verify OTP and receive token.
+ */
+export async function loginVerifyOtp(email, otp, rememberMe = true) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/login-verify-otp`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, otp }),
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Failed to verify code");
+        }
+
+        const user = { _id: data._id, name: data.name, email: data.email };
+        setAuthSession(user, data.token, rememberMe);
+        return { success: true, user, token: data.token };
+    } catch (err) {
+        clearTimeout(timeoutId);
+        throw err;
+    }
+}
+
+/**
+ * Resend login OTP code.
+ */
+export async function resendLoginOtp(email) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/resend-login-otp`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Failed to resend verification code");
+        }
+
+        return {
+            success: true,
+            message: data.message,
+            simulated: data.simulated,
+            devOtp: data.devOtp,
+        };
+    } catch (err) {
+        clearTimeout(timeoutId);
         throw err;
     }
 }

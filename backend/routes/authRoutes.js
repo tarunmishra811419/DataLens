@@ -4,6 +4,8 @@ import {
     sendRegisterOtp,
     registerWithOtp,
     loginUser,
+    loginVerifyOtp,
+    resendLoginOtp,
     googleAuth,
     getMe,
     updateProfile,
@@ -17,6 +19,8 @@ router.post("/send-otp", sendRegisterOtp);
 router.post("/register-with-otp", registerWithOtp);
 router.post("/register", registerUser);
 router.post("/login", loginUser);
+router.post("/login-verify-otp", loginVerifyOtp);
+router.post("/resend-login-otp", resendLoginOtp);
 router.post("/google", googleAuth);          // Firebase Google sign-in
 router.get("/me", protect, getMe);
 router.put("/profile", protect, updateProfile);

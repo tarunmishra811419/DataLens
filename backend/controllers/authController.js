@@ -25,6 +25,7 @@ export const sendRegisterOtp = async (req, res) => {
         // Throttle requests: check if an OTP was sent within the last 45 seconds
         const recentOtp = await Otp.findOne({
             email: normalizedEmail,
+            purpose: "register",
             createdAt: { $gt: new Date(Date.now() - 45 * 1000) },
         });
 
@@ -40,8 +41,8 @@ export const sendRegisterOtp = async (req, res) => {
 
         // Upsert OTP record for this email
         await Otp.findOneAndUpdate(
-            { email: normalizedEmail },
-            { otp: otpCode, expiresAt, createdAt: new Date() },
+            { email: normalizedEmail, purpose: "register" },
+            { otp: otpCode, expiresAt, purpose: "register", createdAt: new Date() },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
 
@@ -89,7 +90,7 @@ export const registerWithOtp = async (req, res) => {
         }
 
         // Validate OTP
-        const otpRecord = await Otp.findOne({ email: normalizedEmail });
+        const otpRecord = await Otp.findOne({ email: normalizedEmail, purpose: "register" });
 
         if (!otpRecord) {
             return res.status(400).json({
@@ -185,7 +186,7 @@ export const registerUser = async (req, res) => {
     }
 };
 
-// Log in an existing user
+// Log in an existing user - Step 1: Validate credentials, send OTP
 export const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -196,7 +197,8 @@ export const loginUser = async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ email }).select("+password");
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail }).select("+password");
 
         if (!user) {
             return res.status(401).json({ message: "Invalid email or password" });
@@ -213,6 +215,95 @@ export const loginUser = async (req, res) => {
             return res.status(401).json({ message: "Invalid email or password" });
         }
 
+        // Credentials valid → send OTP for 2-step verification
+        // Throttle: check if an OTP was sent within the last 30 seconds
+        const recentOtp = await Otp.findOne({
+            email: normalizedEmail,
+            purpose: "login",
+            createdAt: { $gt: new Date(Date.now() - 30 * 1000) },
+        });
+
+        if (recentOtp) {
+            // OTP was already sent recently, just tell client to proceed to OTP step
+            return res.json({
+                pendingOtp: true,
+                email: normalizedEmail,
+                message: "Verification code already sent. Please check your email.",
+            });
+        }
+
+        // Generate 6-digit numeric OTP
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        // Upsert login OTP record
+        await Otp.findOneAndUpdate(
+            { email: normalizedEmail, purpose: "login" },
+            { otp: otpCode, expiresAt, purpose: "login", createdAt: new Date() },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+
+        // Send OTP email
+        const emailResult = await sendOtpEmail(normalizedEmail, otpCode, user.name || "");
+
+        res.json({
+            pendingOtp: true,
+            email: normalizedEmail,
+            message: `Verification code sent to ${normalizedEmail}`,
+            simulated: emailResult.simulated,
+            devOtp: emailResult.simulated ? emailResult.devOtp : undefined,
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Log in an existing user - Step 2: Verify OTP and issue token
+export const loginVerifyOtp = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+
+        if (!email || !otp) {
+            return res.status(400).json({
+                message: "Email and verification code are required",
+            });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+        const cleanedOtp = String(otp).trim();
+
+        // Find the user
+        const user = await User.findOne({ email: normalizedEmail });
+        if (!user) {
+            return res.status(401).json({ message: "Invalid email" });
+        }
+
+        // Validate login OTP
+        const otpRecord = await Otp.findOne({ email: normalizedEmail, purpose: "login" });
+
+        if (!otpRecord) {
+            return res.status(400).json({
+                message: "Verification code expired or not found. Please log in again.",
+            });
+        }
+
+        if (otpRecord.otp !== cleanedOtp) {
+            return res.status(400).json({
+                message: "Invalid verification code. Please check your email and try again.",
+            });
+        }
+
+        if (new Date() > otpRecord.expiresAt) {
+            await Otp.deleteOne({ _id: otpRecord._id });
+            return res.status(400).json({
+                message: "Verification code has expired. Please log in again.",
+            });
+        }
+
+        // OTP is valid - remove it so it cannot be reused
+        await Otp.deleteOne({ _id: otpRecord._id });
+
+        // Issue token
         res.json({
             _id: user._id,
             name: user.name,
@@ -227,6 +318,59 @@ export const loginUser = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+// Resend login OTP
+export const resendLoginOtp = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ message: "Email is required" });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+
+        // Verify user exists
+        const user = await User.findOne({ email: normalizedEmail });
+        if (!user) {
+            return res.status(401).json({ message: "Invalid email" });
+        }
+
+        // Throttle: 30 seconds cooldown
+        const recentOtp = await Otp.findOne({
+            email: normalizedEmail,
+            purpose: "login",
+            createdAt: { $gt: new Date(Date.now() - 30 * 1000) },
+        });
+
+        if (recentOtp) {
+            return res.status(429).json({
+                message: "A verification code was recently sent. Please wait before requesting another.",
+            });
+        }
+
+        // Generate new OTP
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+        await Otp.findOneAndUpdate(
+            { email: normalizedEmail, purpose: "login" },
+            { otp: otpCode, expiresAt, purpose: "login", createdAt: new Date() },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+
+        const emailResult = await sendOtpEmail(normalizedEmail, otpCode, user.name || "");
+
+        res.json({
+            success: true,
+            message: `New verification code sent to ${normalizedEmail}`,
+            simulated: emailResult.simulated,
+            devOtp: emailResult.simulated ? emailResult.devOtp : undefined,
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message || "Failed to resend verification code" });
     }
 };
 
