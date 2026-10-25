@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
     formatTime,
@@ -27,8 +27,13 @@ function Stopwatch() {
     const startTsRef = useRef(null);
 
     // ── Chart state ──────────────────────────────────────────────────────────
-    const [days, setDays] = useState(() => getLastNDays(14));
     const [chartRange, setChartRange] = useState(14);
+    const [chartTick, setChartTick] = useState(0);
+
+    const days = useMemo(() => {
+        if (chartTick < 0) return [];
+        return getLastNDays(chartRange);
+    }, [chartRange, chartTick]);
 
     // ── Toast ────────────────────────────────────────────────────────────────
     const [toast, setToast] = useState(null);
@@ -38,19 +43,15 @@ function Stopwatch() {
 
     // Reload chart whenever storage changes
     const refreshChart = useCallback(() => {
-        setDays(getLastNDays(chartRange));
         setTodayTotal(getSecondsForDay());
-    }, [chartRange]);
+        setChartTick((t) => t + 1);
+    }, []);
 
     useEffect(() => {
         window.addEventListener("datalens_stopwatch_updated", refreshChart);
         return () =>
             window.removeEventListener("datalens_stopwatch_updated", refreshChart);
     }, [refreshChart]);
-
-    useEffect(() => {
-        setDays(getLastNDays(chartRange));
-    }, [chartRange]);
 
     // ── Timer tick ───────────────────────────────────────────────────────────
     useEffect(() => {

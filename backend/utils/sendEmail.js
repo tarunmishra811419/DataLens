@@ -116,7 +116,41 @@ function getOtpHtmlTemplate(otp, name) {
  * Falls back to Nodemailer SMTP, and if blocked by cloud host, provides safe fallback so registration never breaks.
  */
 export async function sendOtpEmail(email, otp, name = "") {
-    // 1. Try Resend HTTPS API (Port 443 - never blocked by Render free tier)
+    // 1. Try Brevo HTTPS API first (Port 443 - delivers to ANY email globally without requiring a custom domain)
+    if (process.env.BREVO_API_KEY) {
+        try {
+            const senderEmail =
+                process.env.BREVO_SENDER_EMAIL ||
+                process.env.EMAIL_USER ||
+                process.env.SMTP_USER ||
+                "tarunmishra811419@gmail.com";
+
+            const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+                method: "POST",
+                headers: {
+                    "api-key": process.env.BREVO_API_KEY,
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                },
+                body: JSON.stringify({
+                    sender: { name: "DataLens", email: senderEmail },
+                    to: [{ email, name: name || "DataLens User" }],
+                    subject: `${otp} is your DataLens verification code`,
+                    htmlContent: getOtpHtmlTemplate(otp, name),
+                }),
+            });
+            const data = await res.json();
+            if (res.ok && (data.messageId || data.id)) {
+                console.log(`[DataLens Auth] Email sent via Brevo API to ${email} (ID: ${data.messageId || data.id})`);
+                return { success: true, simulated: false, messageId: data.messageId || data.id };
+            }
+            console.warn("[DataLens Auth] Brevo API error:", res.status, data);
+        } catch (apiErr) {
+            console.warn("[DataLens Auth] Brevo API request failed:", apiErr.message);
+        }
+    }
+
+    // 2. Try Resend HTTPS API (Port 443 - delivers to developer account / verified domains)
     if (process.env.RESEND_API_KEY) {
         try {
             const res = await fetch("https://api.resend.com/emails", {
@@ -133,42 +167,13 @@ export async function sendOtpEmail(email, otp, name = "") {
                 }),
             });
             const data = await res.json();
-            if (res.ok) {
+            if (res.ok && data.id) {
                 console.log(`[DataLens Auth] Email sent via Resend API to ${email} (ID: ${data.id})`);
                 return { success: true, simulated: false, messageId: data.id };
             }
             console.warn("[DataLens Auth] Resend API error:", data);
         } catch (apiErr) {
             console.warn("[DataLens Auth] Resend API request failed:", apiErr.message);
-        }
-    }
-
-    // 2. Try Brevo HTTPS API (Port 443 - never blocked by Render free tier)
-    if (process.env.BREVO_API_KEY) {
-        try {
-            const senderEmail = process.env.EMAIL_USER || "no-reply@datalens.app";
-            const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-                method: "POST",
-                headers: {
-                    "api-key": process.env.BREVO_API_KEY,
-                    "Content-Type": "application/json",
-                    Accept: "application/json",
-                },
-                body: JSON.stringify({
-                    sender: { name: "DataLens", email: senderEmail },
-                    to: [{ email, name: name || "DataLens User" }],
-                    subject: `${otp} is your DataLens verification code`,
-                    htmlContent: getOtpHtmlTemplate(otp, name),
-                }),
-            });
-            const data = await res.json();
-            if (res.ok) {
-                console.log(`[DataLens Auth] Email sent via Brevo API to ${email} (ID: ${data.messageId})`);
-                return { success: true, simulated: false, messageId: data.messageId };
-            }
-            console.warn("[DataLens Auth] Brevo API error:", data);
-        } catch (apiErr) {
-            console.warn("[DataLens Auth] Brevo API request failed:", apiErr.message);
         }
     }
 

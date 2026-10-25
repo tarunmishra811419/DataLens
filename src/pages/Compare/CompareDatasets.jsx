@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -15,7 +15,6 @@ import {
     TrendingUp,
     Target,
     Users,
-    BarChart3,
     Plus,
     Trash2,
     Sliders,
@@ -120,49 +119,29 @@ function calcDelta(a, b) {
 }
 
 export default function CompareDatasets() {
-    const navigate = useNavigate();
     const location = useLocation();
 
+    const initialComparison = location.state?.loadComparison;
+
     // Mode: 'preset' (choose from sample/saved datasets) or 'manual' (interactive live entry)
-    const [mode, setMode] = useState("manual");
-    const [savedDatasets, setSavedDatasets] = useState([]);
-    const [saveStatus, setSaveStatus] = useState(null);
+    const [mode, setMode] = useState(() => initialComparison?.mode || "manual");
+    const [savedDatasets, setSavedDatasets] = useState(() => {
+        try {
+            return getSavedDatasets() || [];
+        } catch {
+            return [];
+        }
+    });
+    const [saveStatus, setSaveStatus] = useState(() =>
+        initialComparison ? `Loaded comparison report: "${initialComparison.title || "Custom Comparison"}"` : null
+    );
 
     // Preset selection IDs
-    const [datasetAId, setDatasetAId] = useState("q1_sales");
-    const [datasetBId, setDatasetBId] = useState("q2_sales");
-
-    // Load any user-saved datasets from LocalStorage
-    useEffect(() => {
-        try {
-            const datasets = getSavedDatasets();
-            setSavedDatasets(datasets || []);
-        } catch (e) {
-            console.error("Failed to load saved datasets", e);
-        }
-    }, []);
-
-    // Check if a saved comparison was passed from Profile
-    useEffect(() => {
-        if (location.state?.loadComparison) {
-            const loaded = location.state.loadComparison;
-            if (loaded.mode) setMode(loaded.mode);
-            if (loaded.manualA) setManualA(loaded.manualA);
-            if (loaded.manualB) setManualB(loaded.manualB);
-            if (loaded.seriesData) setSeriesData(loaded.seriesData);
-            if (loaded.datasetA?.id && SAMPLE_DATASETS[loaded.datasetA.id]) {
-                setDatasetAId(loaded.datasetA.id);
-            }
-            if (loaded.datasetB?.id && SAMPLE_DATASETS[loaded.datasetB.id]) {
-                setDatasetBId(loaded.datasetB.id);
-            }
-            setSaveStatus(`Loaded comparison report: "${loaded.title || "Custom Comparison"}"`);
-            setTimeout(() => setSaveStatus(null), 4000);
-        }
-    }, [location.state]);
+    const [datasetAId, setDatasetAId] = useState(() => initialComparison?.datasetA?.id || "q1_sales");
+    const [datasetBId, setDatasetBId] = useState(() => initialComparison?.datasetB?.id || "q2_sales");
 
     // Manual Entry State for Dataset A & Dataset B
-    const [manualA, setManualA] = useState({
+    const [manualA, setManualA] = useState(() => initialComparison?.manualA || {
         name: "Dataset A (Baseline)",
         period: "Period 1",
         revenue: 124500,
@@ -171,7 +150,7 @@ export default function CompareDatasets() {
         activeUsers: 3420,
     });
 
-    const [manualB, setManualB] = useState({
+    const [manualB, setManualB] = useState(() => initialComparison?.manualB || {
         name: "Dataset B (Comparison)",
         period: "Period 2",
         revenue: 148200,
@@ -181,12 +160,27 @@ export default function CompareDatasets() {
     });
 
     // Breakdown progression for the chart
-    const [seriesData, setSeriesData] = useState([
+    const [seriesData, setSeriesData] = useState(() => initialComparison?.seriesData || [
         { label: "Category 1", valA: 38000, valB: 46200 },
         { label: "Category 2", valA: 41500, valB: 49800 },
         { label: "Category 3", valA: 45000, valB: 52200 },
         { label: "Category 4", valA: 42000, valB: 48500 },
     ]);
+
+
+    // Keep saved datasets synchronized with custom events
+    useEffect(() => {
+        const handleUpdate = () => {
+            try {
+                setSavedDatasets(getSavedDatasets() || []);
+            } catch (err) {
+                console.error("Failed to sync datasets", err);
+            }
+        };
+
+        window.addEventListener("datalens_datasets_updated", handleUpdate);
+        return () => window.removeEventListener("datalens_datasets_updated", handleUpdate);
+    }, []);
 
     // Active Dataset references based on current mode
     const activeDataA = useMemo(() => {
@@ -449,7 +443,7 @@ export default function CompareDatasets() {
     };
 
     return (
-        <div className="compare-page">
+        <div className="compare-page" key={location.key}>
             <div className="compare-container">
                 {/* Header */}
                 <header className="compare-header">

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { validateName, validateEmail, validatePassword } from "../../utils/validators";
 import { sendRegisterOtp, registerWithOtp } from "../../services/authService";
 import { signInWithGoogle } from "../../services/googleAuthService";
-import { Loader2, Mail, ArrowLeft, ShieldCheck, KeyRound, Edit3 } from "lucide-react";
+import { Loader2, Mail, ArrowLeft, ShieldCheck, Edit3 } from "lucide-react";
 import "./Register.css";
 
 const GoogleIcon = () => (
