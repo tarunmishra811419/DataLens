@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { AlertTriangle, X, Trash2 } from "lucide-react";
 import "./UploadDataset.css";
 
 // ── File type helpers ─────────────────────────────────────────────────────────
@@ -63,6 +64,95 @@ function parseJSON(text) {
     return { rows: parsed, columns: cols };
 }
 
+// ── Dataset Structure Validator ─────────────────────────────────────────────
+function validateDatasetStructure(rows, columns) {
+    // 1. Must have at least one column
+    if (!columns || columns.length === 0) {
+        return {
+            valid: false,
+            title: "No Column Headers Detected",
+            message: "The uploaded file does not contain valid column headers or a recognizable tabular layout.",
+            details: "Ensure your file begins with a header row defining column names (e.g. Name, Category, Revenue).",
+        };
+    }
+
+    // 2. Must have at least one data row
+    if (!rows || rows.length === 0) {
+        return {
+            valid: false,
+            title: "Zero Data Rows Found",
+            message: "The file only contains a single line of text or headers without any records beneath it.",
+            details: "If you uploaded a series of letters or words (e.g. a, b, c, d...), the parser read them as headers with 0 rows.",
+        };
+    }
+
+    // 3. Alphabet sequence check: if all headers are single letters
+    const isSingleCharCols = columns.every((c) => String(c).trim().length <= 1);
+    if (isSingleCharCols && columns.length > 2 && rows.length <= 2) {
+        return {
+            valid: false,
+            title: "Malformed Alphabet Sequence Detected",
+            message: "The file appears to contain an unstructured sequence of alphabets rather than structured dataset records.",
+            details: "DataLens requires structured records with meaningful attributes and metrics to generate charts and insights.",
+        };
+    }
+
+    // 4. Inspect all non-empty cell values
+    const nonNullValues = [];
+    let numericCount = 0;
+    let singleLetterCount = 0;
+
+    for (const row of rows) {
+        for (const col of columns) {
+            const val = row[col];
+            if (val !== undefined && val !== null && String(val).trim() !== "") {
+                const s = String(val).trim();
+                nonNullValues.push(s);
+                if (!isNaN(Number(s))) {
+                    numericCount++;
+                } else if (/^[a-zA-Z]$/.test(s)) {
+                    singleLetterCount++;
+                }
+            }
+        }
+    }
+
+    if (nonNullValues.length === 0) {
+        return {
+            valid: false,
+            title: "Empty Dataset Detected",
+            message: "The file contains blank cells with no analytical data.",
+            details: "Please verify that the file contains active data records.",
+        };
+    }
+
+    // 5. If majority of cells are single alphabets and there are no numeric values
+    const singleLetterRatio = singleLetterCount / nonNullValues.length;
+    if (singleLetterRatio >= 0.7 && numericCount === 0 && nonNullValues.length >= 3) {
+        return {
+            valid: false,
+            title: "Improper Data Format Detected",
+            message: "The file consists of loose alphabetic characters without structured records, metrics, or dimensions.",
+            details: "DataLens could not identify any statistical metrics, dates, or categorical attributes in this file.",
+        };
+    }
+
+    // 6. Single column check
+    if (columns.length === 1) {
+        const colName = String(columns[0]).trim();
+        if (/^[a-zA-Z]$/.test(colName) && singleLetterRatio > 0.4) {
+            return {
+                valid: false,
+                title: "Invalid Character List",
+                message: "The file is an arbitrary single-column list of alphabets without structured attributes.",
+                details: "Please provide a dataset with at least one dimension and metric (e.g. Month, Sales).",
+            };
+        }
+    }
+
+    return { valid: true };
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function UploadDataset() {
     const navigate = useNavigate();
@@ -74,11 +164,13 @@ export default function UploadDataset() {
     const [file, setFile] = useState(null);
     const [parsedData, setParsedData] = useState(null);
     const [error, setError] = useState("");
+    const [validationError, setValidationError] = useState(null);
 
     // ── File processing core ──────────────────────────────────────────────────
     const processFile = useCallback(async (selectedFile) => {
         if (!selectedFile) return;
         setError("");
+        setValidationError(null);
         setFile(selectedFile);
         setParsedData(null);
         setParsing(true);
@@ -107,15 +199,33 @@ export default function UploadDataset() {
                 );
             }
 
-            if (!result.rows || result.rows.length === 0) {
-                throw new Error("The uploaded file appears to be empty or has no data rows.");
+            // Perform structural validation
+            const validation = validateDatasetStructure(result.rows, result.columns);
+            if (!validation.valid) {
+                // Show pop-up message regarding improper data and discard file
+                setValidationError({
+                    title: validation.title,
+                    message: validation.message,
+                    details: validation.details,
+                    fileName: selectedFile.name,
+                });
+                setFile(null);
+                setParsedData(null);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+                return;
             }
 
             setParsedData(result);
         } catch (err) {
-            setError(err.message || "An unexpected error occurred while parsing the file.");
+            setValidationError({
+                title: "Unreadable or Malformed File",
+                message: "DataLens could not parse this file into a structured tabular dataset.",
+                details: err.message,
+                fileName: selectedFile.name,
+            });
             setFile(null);
             setParsedData(null);
+            if (fileInputRef.current) fileInputRef.current.value = "";
         } finally {
             setParsing(false);
         }
@@ -378,6 +488,68 @@ export default function UploadDataset() {
                     </div>
                 )}
             </div>
+
+            {/* ── Pop-up Modal for Discarding Invalid / Non-tabular Files ── */}
+            {validationError && (
+                <div className="upload-modal-overlay" onClick={() => setValidationError(null)}>
+                    <div className="upload-modal-card" onClick={(e) => e.stopPropagation()}>
+                        <div className="upload-modal-header">
+                            <div className="upload-modal-icon-wrap">
+                                <AlertTriangle size={22} className="upload-modal-alert-icon" />
+                            </div>
+                            <div className="upload-modal-title-wrap">
+                                <h3>{validationError.title}</h3>
+                                {validationError.fileName && (
+                                    <span className="upload-modal-filename">{validationError.fileName}</span>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                className="upload-modal-close-btn"
+                                onClick={() => setValidationError(null)}
+                                title="Dismiss notification"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="upload-modal-body">
+                            <p className="upload-modal-msg">{validationError.message}</p>
+                            {validationError.details && (
+                                <div className="upload-modal-details-box">
+                                    <strong>Details:</strong>
+                                    <p>{validationError.details}</p>
+                                </div>
+                            )}
+                            <div className="upload-modal-guidelines">
+                                <strong>Supported Dataset Format:</strong>
+                                <ul>
+                                    <li>Files must contain structured rows with column headers (e.g. Month, Revenue, Category).</li>
+                                    <li>Must contain analytical data (numeric values or categorical series).</li>
+                                    <li>Raw alphabet series (e.g. a, b, c, d...z) and unstructured plain text cannot be analyzed and are automatically discarded.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div className="upload-modal-footer">
+                            <div className="upload-modal-discarded-badge">
+                                <Trash2 size={13} />
+                                <span>File discarded for further process</span>
+                            </div>
+                            <button
+                                type="button"
+                                className="upload-modal-action-btn"
+                                onClick={() => {
+                                    setValidationError(null);
+                                    fileInputRef.current?.click();
+                                }}
+                            >
+                                Choose Another File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

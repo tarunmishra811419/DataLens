@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { BarChart2, TrendingUp } from "lucide-react";
 import {
     formatTime,
     formatShort,
@@ -29,6 +30,7 @@ function Stopwatch() {
     // ── Chart state ──────────────────────────────────────────────────────────
     const [chartRange, setChartRange] = useState(14);
     const [chartTick, setChartTick] = useState(0);
+    const [chartType, setChartType] = useState("bar"); // "bar" | "line"
 
     const days = useMemo(() => {
         if (chartTick < 0) return [];
@@ -120,6 +122,53 @@ function Stopwatch() {
     const totalTracked = days.reduce((a, d) => a + d.seconds, 0);
     const activeDays = days.filter((d) => d.seconds > 0).length;
     const avgPerDay = activeDays > 0 ? Math.round(totalTracked / activeDays) : 0;
+
+    // ── Line Chart Coordinates ────────────────────────────────────────────────
+    const lineChartData = useMemo(() => {
+        if (!days || days.length === 0) return { path: "", area: "", points: [] };
+        const N = days.length;
+        const colWidth = 1000 / N;
+        const points = days.map((day, i) => {
+            const x = (i + 0.5) * colWidth;
+            const ratio = maxSeconds > 0 ? day.seconds / maxSeconds : 0;
+            // 200px coordinate system: bottom is 190, top is 15
+            const y = 190 - ratio * 170;
+            return {
+                x,
+                y,
+                day,
+                index: i,
+                isToday: day.date === getTodayKey(),
+            };
+        });
+
+        if (points.length === 1) {
+            const p = points[0];
+            return {
+                path: `M ${p.x - 20} ${p.y} L ${p.x + 20} ${p.y}`,
+                area: `M ${p.x - 20} 200 L ${p.x - 20} ${p.y} L ${p.x + 20} ${p.y} L ${p.x + 20} 200 Z`,
+                points,
+            };
+        }
+
+        // Cubic spline path through points
+        let path = `M ${points[0].x} ${points[0].y}`;
+        for (let i = 0; i < points.length - 1; i++) {
+            const p0 = points[i];
+            const p1 = points[i + 1];
+            const cp1x = p0.x + (p1.x - p0.x) / 2;
+            const cp1y = p0.y;
+            const cp2x = p0.x + (p1.x - p0.x) / 2;
+            const cp2y = p1.y;
+            path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
+        }
+
+        const first = points[0];
+        const last = points[points.length - 1];
+        const area = `${path} L ${last.x} 200 L ${first.x} 200 Z`;
+
+        return { path, area, points };
+    }, [days, maxSeconds]);
 
     // ── Today's ring progress (max = 8 hours) ────────────────────────────────
     const TARGET = 8 * 3600;
@@ -367,15 +416,40 @@ function Stopwatch() {
                     </div>
                 </section>
 
-                {/* ── Bar Chart ─────────────────────────────────────────────── */}
+                {/* ── Bar / Line Chart ─────────────────────────────────────── */}
                 <section className="sw-chart-card">
                     <div className="sw-chart-header">
                         <div>
                             <span className="sw-chart-sub">Daily Distribution</span>
                             <h2 className="sw-chart-title">Time Tracked per Day</h2>
                         </div>
-                        <div className="sw-chart-legend">
-                            <span className="sw-legend-dot"></span> Hours tracked
+                        <div className="sw-chart-header-actions">
+                            <div className="sw-chart-type-toggle">
+                                <button
+                                    type="button"
+                                    className={`sw-toggle-btn ${chartType === "bar" ? "active" : ""}`}
+                                    onClick={() => setChartType("bar")}
+                                    title="Bar Graph View"
+                                    aria-label="Bar Graph View"
+                                >
+                                    <BarChart2 size={14} />
+                                    <span>Bar</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`sw-toggle-btn ${chartType === "line" ? "active" : ""}`}
+                                    onClick={() => setChartType("line")}
+                                    title="Line Graph View"
+                                    aria-label="Line Graph View"
+                                >
+                                    <TrendingUp size={14} />
+                                    <span>Line</span>
+                                </button>
+                            </div>
+                            <div className="sw-chart-legend">
+                                <span className={`sw-legend-dot ${chartType === "line" ? "sw-legend-line" : ""}`}></span>
+                                <span>Hours tracked</span>
+                            </div>
                         </div>
                     </div>
 
@@ -398,30 +472,87 @@ function Stopwatch() {
                                 ))}
                             </div>
 
-                            <div className="sw-bars">
-                                {days.map((day) => {
-                                    const heightPct =
-                                        maxSeconds > 0
-                                            ? (day.seconds / maxSeconds) * 100
-                                            : 0;
-                                    const isToday = day.date === getTodayKey();
-                                    return (
-                                        <div
-                                            key={day.date}
-                                            className="sw-bar-col"
-                                            title={`${day.label}: ${formatShort(day.seconds)}`}
-                                        >
-                                            <div className="sw-bar-tooltip">
-                                                {formatShort(day.seconds)}
-                                            </div>
+                            {chartType === "bar" ? (
+                                <div className="sw-bars">
+                                    {days.map((day) => {
+                                        const heightPct =
+                                            maxSeconds > 0
+                                                ? (day.seconds / maxSeconds) * 100
+                                                : 0;
+                                        const isToday = day.date === getTodayKey();
+                                        return (
                                             <div
-                                                className={`sw-bar ${isToday ? "sw-bar-today" : ""} ${day.seconds === 0 ? "sw-bar-empty" : ""}`}
-                                                style={{ height: `${Math.max(heightPct, day.seconds > 0 ? 2 : 0)}%` }}
+                                                key={day.date}
+                                                className="sw-bar-col"
+                                                title={`${day.label}: ${formatShort(day.seconds)}`}
+                                            >
+                                                <div className="sw-bar-tooltip">
+                                                    {formatShort(day.seconds)}
+                                                </div>
+                                                <div
+                                                    className={`sw-bar ${isToday ? "sw-bar-today" : ""} ${day.seconds === 0 ? "sw-bar-empty" : ""}`}
+                                                    style={{ height: `${Math.max(heightPct, day.seconds > 0 ? 2 : 0)}%` }}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="sw-line-chart-container">
+                                    <svg
+                                        viewBox="0 0 1000 200"
+                                        preserveAspectRatio="none"
+                                        className="sw-line-svg"
+                                    >
+                                        <defs>
+                                            <linearGradient id="swLineGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.38" />
+                                                <stop offset="70%" stopColor="#2563eb" stopOpacity="0.08" />
+                                                <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.0" />
+                                            </linearGradient>
+                                        </defs>
+
+                                        {/* Filled area */}
+                                        <path d={lineChartData.area} fill="url(#swLineGradient)" />
+
+                                        {/* Smooth Line */}
+                                        <path
+                                            d={lineChartData.path}
+                                            fill="none"
+                                            stroke="#3b82f6"
+                                            strokeWidth="2.5"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+
+                                        {/* Points */}
+                                        {lineChartData.points.map((pt) => (
+                                            <circle
+                                                key={pt.day.date}
+                                                cx={pt.x}
+                                                cy={pt.y}
+                                                r={pt.isToday ? 5.5 : pt.day.seconds > 0 ? 4 : 2.5}
+                                                className={`sw-line-dot ${pt.isToday ? "sw-line-dot-today" : ""} ${pt.day.seconds === 0 ? "sw-line-dot-empty" : ""}`}
                                             />
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                        ))}
+                                    </svg>
+
+                                    {/* Hover columns with tooltip */}
+                                    <div className="sw-line-hover-grid">
+                                        {lineChartData.points.map((pt) => (
+                                            <div
+                                                key={pt.day.date}
+                                                className="sw-line-hit-col"
+                                                title={`${pt.day.label}: ${formatShort(pt.day.seconds)}`}
+                                            >
+                                                <div className="sw-bar-tooltip">
+                                                    {formatShort(pt.day.seconds)}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
