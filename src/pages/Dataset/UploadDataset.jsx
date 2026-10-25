@@ -26,12 +26,12 @@ function formatBytes(bytes) {
 }
 
 // ── Parsers ───────────────────────────────────────────────────────────────────
-function parseCSV(text, separator = ",") {
+function parseCSV(text, separator) {
     return new Promise((resolve, reject) => {
         Papa.parse(text, {
             header: true,
             skipEmptyLines: true,
-            delimiter: separator,
+            delimiter: separator || "",
             complete: (results) => {
                 if (results.errors.length > 0 && results.data.length === 0) {
                     reject(new Error("Failed to parse CSV: " + results.errors[0].message));
@@ -64,7 +64,29 @@ function parseJSON(text) {
     return { rows: parsed, columns: cols };
 }
 
-// ── Dataset Structure Validator ─────────────────────────────────────────────
+// ── Number Helper for Plottable Values ───────────────────────────────────────
+function isNumericValue(val) {
+    if (val === undefined || val === null) return false;
+    const str = String(val).trim();
+    if (str === "") return false;
+    if (!isNaN(Number(str)) && isFinite(Number(str))) return true;
+    const cleaned = str.replace(/^[$\u20AC\u00A3\u00A5]/, "").replace(/,/g, "").replace(/%$/, "").trim();
+    return cleaned !== "" && !isNaN(Number(cleaned)) && isFinite(Number(cleaned));
+}
+
+function getPlottableNumericColumns(rows, columns) {
+    if (!rows || rows.length === 0 || !columns || columns.length === 0) return [];
+    return columns.filter((col) => {
+        const nonNulls = rows
+            .map((r) => r[col])
+            .filter((v) => v !== undefined && v !== null && String(v).trim() !== "");
+        if (nonNulls.length === 0) return false;
+        const numericCount = nonNulls.filter(isNumericValue).length;
+        return numericCount / nonNulls.length >= 0.4;
+    });
+}
+
+// ── Dataset Structure & Visualization Validator ─────────────────────────────
 function validateDatasetStructure(rows, columns) {
     // 1. Must have at least one column
     if (!columns || columns.length === 0) {
@@ -72,22 +94,32 @@ function validateDatasetStructure(rows, columns) {
             valid: false,
             title: "No Column Headers Detected",
             message: "The uploaded file does not contain valid column headers or a recognizable tabular layout.",
-            details: "Ensure your file begins with a header row defining column names (e.g. Name, Category, Revenue).",
+            details: "Ensure your file begins with a header row defining column names (e.g. Month, Category, Revenue).",
         };
     }
 
-    // 2. Must have at least one data row
+    // 2. Must have at least 2 data rows for graphing
     if (!rows || rows.length === 0) {
         return {
             valid: false,
-            title: "Zero Data Rows Found",
+            title: "No Data Rows Found",
             message: "The file only contains a single line of text or headers without any records beneath it.",
-            details: "If you uploaded a series of letters or words (e.g. a, b, c, d...), the parser read them as headers with 0 rows.",
+            details: "If you uploaded a series of letters or words (e.g. a, b, c, d...z), the parser read them as headers with 0 rows.",
         };
     }
 
-    // 3. Alphabet sequence check: if all headers are single letters
-    const isSingleCharCols = columns.every((c) => String(c).trim().length <= 1);
+    if (rows.length < 2) {
+        return {
+            valid: false,
+            title: "Insufficient Data Records",
+            message: "The file contains only 1 data row. At least 2 data records are required to plot comparisons, trends, or visual graphs.",
+            details: "Visual charts cannot generate meaningful graphs from a single data point.",
+        };
+    }
+
+    // 3. Alphabet sequence check: if all headers are single letters (e.g. a, b, c, d...z)
+    const singleCharCols = columns.filter((c) => String(c).trim().length <= 1);
+    const isSingleCharCols = singleCharCols.length / columns.length >= 0.75;
     if (isSingleCharCols && columns.length > 2 && rows.length <= 2) {
         return {
             valid: false,
@@ -98,26 +130,26 @@ function validateDatasetStructure(rows, columns) {
     }
 
     // 4. Inspect all non-empty cell values
-    const nonNullValues = [];
-    let numericCount = 0;
-    let singleLetterCount = 0;
+    let totalCells = 0;
+    let numericCells = 0;
+    let singleLetterCells = 0;
 
     for (const row of rows) {
         for (const col of columns) {
             const val = row[col];
             if (val !== undefined && val !== null && String(val).trim() !== "") {
                 const s = String(val).trim();
-                nonNullValues.push(s);
-                if (!isNaN(Number(s))) {
-                    numericCount++;
+                totalCells++;
+                if (isNumericValue(s)) {
+                    numericCells++;
                 } else if (/^[a-zA-Z]$/.test(s)) {
-                    singleLetterCount++;
+                    singleLetterCells++;
                 }
             }
         }
     }
 
-    if (nonNullValues.length === 0) {
+    if (totalCells === 0) {
         return {
             valid: false,
             title: "Empty Dataset Detected",
@@ -126,28 +158,53 @@ function validateDatasetStructure(rows, columns) {
         };
     }
 
-    // 5. If majority of cells are single alphabets and there are no numeric values
-    const singleLetterRatio = singleLetterCount / nonNullValues.length;
-    if (singleLetterRatio >= 0.7 && numericCount === 0 && nonNullValues.length >= 3) {
+    // 5. Loose alphabet sequence check (e.g. cells are letters like a, b, c...)
+    const singleLetterRatio = singleLetterCells / totalCells;
+    if (singleLetterRatio >= 0.5 && numericCells === 0) {
         return {
             valid: false,
-            title: "Improper Data Format Detected",
+            title: "Improper Data Format (Alphabets)",
             message: "The file consists of loose alphabetic characters without structured records, metrics, or dimensions.",
-            details: "DataLens could not identify any statistical metrics, dates, or categorical attributes in this file.",
+            details: "DataLens cannot generate charts from an arbitrary sequence of alphabetic letters.",
         };
     }
 
-    // 6. Single column check
-    if (columns.length === 1) {
-        const colName = String(columns[0]).trim();
-        if (/^[a-zA-Z]$/.test(colName) && singleLetterRatio > 0.4) {
-            return {
-                valid: false,
-                title: "Invalid Character List",
-                message: "The file is an arbitrary single-column list of alphabets without structured attributes.",
-                details: "Please provide a dataset with at least one dimension and metric (e.g. Month, Sales).",
-            };
+    // 6. Mandatory Numeric Column Check for Visualizations
+    const plottableNumericCols = getPlottableNumericColumns(rows, columns);
+    if (plottableNumericCols.length === 0) {
+        return {
+            valid: false,
+            title: "Cannot Generate Graphs (No Numeric Data)",
+            message: "This file does not contain any numeric columns or plottable data to generate charts and graphs.",
+            details: "Every graph (Bar, Line, Pie, Area, Scatter, Radar) requires at least one quantitative metric (e.g., Sales, Quantity, Age, Score, Price) to plot on axes. Files containing only plain text, names, descriptions, or alphabets cannot be visualized.",
+        };
+    }
+
+    // 7. Verify that at least one numeric column has valid, non-zero plottable variance
+    let hasPlottableValues = false;
+    for (const col of plottableNumericCols) {
+        const nums = rows
+            .map((r) => {
+                const v = r[col];
+                if (v === undefined || v === null) return NaN;
+                const cleaned = String(v).replace(/^[$\u20AC\u00A3\u00A5]/, "").replace(/,/g, "").replace(/%$/, "").trim();
+                return Number(cleaned);
+            })
+            .filter((n) => !isNaN(n) && isFinite(n));
+
+        if (nums.some((n) => n !== 0)) {
+            hasPlottableValues = true;
+            break;
         }
+    }
+
+    if (!hasPlottableValues) {
+        return {
+            valid: false,
+            title: "No Plottable Values Detected",
+            message: "All numeric values in this dataset are zero or blank.",
+            details: "Charts cannot display meaningful visual graphs when all metric values are zero.",
+        };
     }
 
     return { valid: true };
@@ -182,10 +239,10 @@ export default function UploadDataset() {
 
             if (ext === ".csv") {
                 const text = await selectedFile.text();
-                result = await parseCSV(text, ",");
+                result = await parseCSV(text, "");
             } else if (ext === ".tsv" || ext === ".txt") {
                 const text = await selectedFile.text();
-                const sep = text.includes("\t") ? "\t" : ",";
+                const sep = text.includes("\t") ? "\t" : (text.includes(";") ? ";" : "");
                 result = await parseCSV(text, sep);
             } else if (ext === ".xlsx" || ext === ".xls") {
                 const buffer = await selectedFile.arrayBuffer();
