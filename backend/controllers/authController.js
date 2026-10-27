@@ -536,9 +536,8 @@ export const forgotPassword = async (req, res) => {
         const user = await User.findOne({ email: normalizedEmail });
 
         if (!user) {
-            return res.json({
-                success: true,
-                message: "If an account exists with this email, password reset instructions have been sent.",
+            return res.status(404).json({
+                message: "No account found with this email. Please check the spelling or create an account first.",
             });
         }
 
