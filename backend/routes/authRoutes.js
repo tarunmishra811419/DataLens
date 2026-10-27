@@ -10,6 +10,7 @@ import {
     getMe,
     updateProfile,
     updatePassword,
+    forgotPassword,
 } from "../controllers/authController.js";
 import { protect } from "../middleware/auth.js";
 
@@ -21,6 +22,7 @@ router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.post("/login-verify-otp", loginVerifyOtp);
 router.post("/resend-login-otp", resendLoginOtp);
+router.post("/forgot-password", forgotPassword);
 router.post("/google", googleAuth);          // Firebase Google sign-in
 router.get("/me", protect, getMe);
 router.put("/profile", protect, updateProfile);

@@ -1,7 +1,7 @@
 import User from "../models/User.js";
 import Otp from "../models/Otp.js";
 import generateToken from "../utils/generateToken.js";
-import { sendOtpEmail } from "../utils/sendEmail.js";
+import { sendOtpEmail, sendPasswordResetEmail } from "../utils/sendEmail.js";
 
 // Send OTP to email for account registration
 export const sendRegisterOtp = async (req, res) => {
@@ -520,5 +520,51 @@ export const updatePassword = async (req, res) => {
         res.json({ message: "Password updated successfully" });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+// Request password reset email
+export const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ message: "Please provide an email address" });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
+
+        if (!user) {
+            return res.json({
+                success: true,
+                message: "If an account exists with this email, password reset instructions have been sent.",
+            });
+        }
+
+        if (user.authProvider === "google" && !user.password) {
+            return res.status(400).json({
+                message: "This account uses Google Sign-In. Please sign in with Google.",
+            });
+        }
+
+        const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+        await Otp.findOneAndUpdate(
+            { email: normalizedEmail, purpose: "reset" },
+            { otp: resetCode, expiresAt, purpose: "reset", createdAt: new Date() },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+
+        await sendPasswordResetEmail(normalizedEmail, resetCode, user.name || "");
+
+        res.json({
+            success: true,
+            message: "Password reset instructions sent to your email.",
+        });
+    } catch (error) {
+        console.error("forgotPassword error:", error);
+        res.status(500).json({ message: error.message || "Failed to send reset email" });
     }
 };

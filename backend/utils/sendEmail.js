@@ -231,3 +231,109 @@ export async function sendOtpEmail(email, otp, name = "") {
         };
     }
 }
+
+/**
+ * Send password reset code email.
+ */
+export async function sendPasswordResetEmail(email, resetCode, name = "") {
+    const template = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataLens Password Reset</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #090d16; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f1f5f9;">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #090d16; padding: 40px 10px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 520px; background-color: #0c101c; border: 1px solid #1e293b; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);">
+                    <tr>
+                        <td style="padding: 32px 36px 20px; border-bottom: 1px solid #1e293b;">
+                            <span style="font-size: 20px; font-weight: 700; color: #ffffff;">Data<span style="color: #3b82f6;">Lens</span></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 32px 36px;">
+                            <h1 style="margin: 0 0 12px; font-size: 22px; font-weight: 700; color: #ffffff;">Password Reset Code</h1>
+                            <p style="margin: 0 0 24px; font-size: 14px; line-height: 1.6; color: #94a3b8;">
+                                Hello ${name || "there"},<br>
+                                We received a request to reset your DataLens password. Use the 6-digit recovery code below:
+                            </p>
+                            <div style="background-color: #0f172a; border: 1px solid #2563eb; border-radius: 8px; padding: 20px; text-align: center; margin: 28px 0;">
+                                <span style="font-family: 'Courier New', Courier, monospace; font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #60a5fa; display: inline-block; padding-left: 8px;">
+                                    ${resetCode}
+                                </span>
+                            </div>
+                            <p style="margin: 0 0 14px; font-size: 13px; color: #64748b; line-height: 1.5;">
+                                This code is valid for <strong>30 minutes</strong>.
+                            </p>
+                            <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+                                If you did not request this, please disregard this email. Your account remains completely secure.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 24px 36px; background-color: #090d16; border-top: 1px solid #1e293b; text-align: center;">
+                            <p style="margin: 0; font-size: 12px; color: #475569;">
+                                © ${new Date().getFullYear()} DataLens Analytics Studio. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`;
+
+    if (process.env.BREVO_API_KEY) {
+        try {
+            const senderEmail =
+                process.env.BREVO_SENDER_EMAIL ||
+                process.env.EMAIL_USER ||
+                process.env.SMTP_USER ||
+                "tarunmishra811419@gmail.com";
+
+            const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+                method: "POST",
+                headers: {
+                    "api-key": process.env.BREVO_API_KEY,
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                },
+                body: JSON.stringify({
+                    sender: { name: "DataLens Security", email: senderEmail },
+                    to: [{ email, name: name || "DataLens User" }],
+                    subject: `${resetCode} is your DataLens password reset code`,
+                    htmlContent: template,
+                }),
+            });
+            const data = await res.json();
+            if (res.ok && (data.messageId || data.id)) {
+                console.log(`[DataLens Auth] Reset email sent via Brevo to ${email} (ID: ${data.messageId || data.id})`);
+                return { success: true, messageId: data.messageId || data.id };
+            }
+        } catch (apiErr) {
+            console.warn("[DataLens Auth] Brevo reset email failed:", apiErr.message);
+        }
+    }
+
+    const transporter = createTransporter();
+    if (transporter) {
+        try {
+            await transporter.sendMail({
+                from: process.env.EMAIL_FROM || `"DataLens Security" <${process.env.EMAIL_USER}>`,
+                to: email,
+                subject: `${resetCode} is your DataLens password reset code`,
+                html: template,
+            });
+            return { success: true };
+        } catch (e) {
+            console.warn("[DataLens Auth] SMTP reset dispatch failed:", e.message);
+        }
+    }
+
+    return { success: true, simulated: true };
+}
