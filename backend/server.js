@@ -13,13 +13,33 @@ connectDB();
 
 const app = express();
 
+const rawClientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.trim() : "";
+const clientUrlNoSlash = rawClientUrl.replace(/\/+$/, "");
+
+const allowedOrigins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:4173",
+    "https://data-lens-ten.vercel.app",
+    clientUrlNoSlash,
+].filter(Boolean);
+
 app.use(
     cors({
-        origin: [
-            "http://localhost:5173",
-            "http://localhost:3000",
-            process.env.CLIENT_URL,
-        ].filter(Boolean),
+        origin: (origin, callback) => {
+            // Allow requests with no origin (curl, server-to-server, health checks)
+            if (!origin) return callback(null, true);
+
+            const normalized = origin.replace(/\/+$/, "");
+            const allowed =
+                allowedOrigins.includes(normalized) ||
+                normalized.endsWith(".vercel.app");
+
+            if (allowed) {
+                return callback(null, true);
+            }
+            return callback(new Error(`Origin ${origin} not allowed by CORS`));
+        },
         credentials: true,
     })
 );
