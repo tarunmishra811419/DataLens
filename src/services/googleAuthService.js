@@ -7,11 +7,11 @@
 import { signInWithPopup, signOut as firebaseSignOut } from "firebase/auth";
 import { auth, googleProvider } from "../config/firebase.js";
 import { setAuthSession } from "./authService.js";
+import { getApiBaseUrl } from "../utils/constants.js";
 
-const API_BASE_URL =
-    (import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api/auth";
+const API_BASE_URL = `${getApiBaseUrl()}/api/auth`;
 
-const REQUEST_TIMEOUT_MS = 20000;
+const REQUEST_TIMEOUT_MS = 35000;
 
 /**
  * Sign in with Google via Firebase popup.

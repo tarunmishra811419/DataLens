@@ -5,9 +5,9 @@
 // ═══════════════════════════════════════════════
 
 import { getAuthSession } from "./authService.js";
+import { getApiBaseUrl } from "../utils/constants.js";
 
-const API_BASE_URL =
-    (import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api/datasets";
+const API_BASE_URL = `${getApiBaseUrl()}/api/datasets`;
 
 /**
  * Returns a unique storage key for the active user session.

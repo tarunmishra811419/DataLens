@@ -373,8 +373,7 @@ function Login() {
                     setOtpSimulated(!!result.simulated);
                     setOtpDevCode(result.devOtp || "");
                     setStep("otp");
-                } else {
-                    // Direct login (demo/offline mode)
+                } else if (result.token) {
                     setStatusMessage({
                         type: "success",
                         text: result.notice || "Welcome back! Redirecting to your dashboard...",
@@ -382,6 +381,8 @@ function Login() {
                     setTimeout(() => {
                         navigate("/dashboard");
                     }, 900);
+                } else {
+                    throw new Error("Unable to complete login. Please verify credentials.");
                 }
             }
         } catch (err) {

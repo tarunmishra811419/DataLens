@@ -4,11 +4,12 @@
 // and token persistence with backend API & offline fallback.
 // ═══════════════════════════════════════════════
 
-const API_BASE_URL =
-    (import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api/auth";
+import { getApiBaseUrl } from "../utils/constants.js";
 
-// Render free tier cold-starts can take up to 20 seconds - use a generous timeout.
-const REQUEST_TIMEOUT_MS = 20000;
+const API_BASE_URL = `${getApiBaseUrl()}/api/auth`;
+
+// Render free tier cold-starts can take up to 35 seconds
+const REQUEST_TIMEOUT_MS = 35000;
 
 /**
  * Persist authentication session to storage.
@@ -106,29 +107,15 @@ export async function loginUser(email, password, rememberMe = true) {
     } catch (err) {
         clearTimeout(timeoutId);
 
-        // If server is offline or network error, provide seamless client/demo session
         const isNetworkError =
             err.name === "AbortError" ||
             err.message.includes("Failed to fetch") ||
             err.message.includes("NetworkError");
 
         if (isNetworkError) {
-            // Offline demo fallback - skip OTP for demo mode
-            const demoUser = {
-                _id: "demo-" + Date.now(),
-                name: email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) || "Data Analyst",
-                email: email,
-            };
-            const demoToken = "demo-jwt-" + Math.random().toString(36).substring(2);
-            setAuthSession(demoUser, demoToken, rememberMe);
-
-            return {
-                success: true,
-                user: demoUser,
-                token: demoToken,
-                isDemo: true,
-                notice: "Signed in with Local Workspace Mode (Backend offline)",
-            };
+            throw new Error(
+                "Unable to reach the server. The backend may be waking up (free tier) — please wait 15 seconds and try again."
+            );
         }
 
         throw err;
@@ -237,14 +224,9 @@ export async function sendRegisterOtp(email, name = "") {
             err.message.includes("NetworkError");
 
         if (isNetworkError) {
-            // Offline demo fallback: generate client demo code so user can test UI seamlessly
-            const demoCode = "123456";
-            return {
-                success: true,
-                simulated: true,
-                devOtp: demoCode,
-                message: "Verification code sent (Offline workspace mode - use 123456)",
-            };
+            throw new Error(
+                "Unable to connect to the email verification server. Please check your connection or try again."
+            );
         }
 
         throw err;
@@ -285,21 +267,9 @@ export async function registerWithOtp(name, email, password, otp) {
             err.message.includes("NetworkError");
 
         if (isNetworkError) {
-            const demoUser = {
-                _id: "demo-" + Date.now(),
-                name: name.trim() || "Data Analyst",
-                email: email,
-            };
-            const demoToken = "demo-jwt-" + Math.random().toString(36).substring(2);
-            setAuthSession(demoUser, demoToken, true);
-
-            return {
-                success: true,
-                user: demoUser,
-                token: demoToken,
-                isDemo: true,
-                notice: "Account created in Local Workspace Mode (Backend offline)",
-            };
+            throw new Error(
+                "Unable to reach the server to verify code. Please try again."
+            );
         }
 
         throw err;
@@ -308,7 +278,6 @@ export async function registerWithOtp(name, email, password, otp) {
 
 /**
  * Register a new user.
- * Attempts backend connection first, falls back to demo session if offline.
  */
 export async function registerUser(name, email, password) {
     const controller = new AbortController();
@@ -341,21 +310,9 @@ export async function registerUser(name, email, password) {
             err.message.includes("NetworkError");
 
         if (isNetworkError) {
-            const demoUser = {
-                _id: "demo-" + Date.now(),
-                name: name.trim() || "Data Analyst",
-                email: email,
-            };
-            const demoToken = "demo-jwt-" + Math.random().toString(36).substring(2);
-            setAuthSession(demoUser, demoToken, true);
-
-            return {
-                success: true,
-                user: demoUser,
-                token: demoToken,
-                isDemo: true,
-                notice: "Account created in Local Workspace Mode (Backend offline)",
-            };
+            throw new Error(
+                "Unable to reach the server to create account. Please try again."
+            );
         }
 
         throw err;
@@ -388,18 +345,15 @@ export async function requestPasswordReset(email) {
     } catch (err) {
         clearTimeout(timeoutId);
 
-        // Offline / simulated success for UX
         const isNetworkError =
             err.name === "AbortError" ||
             err.message.includes("Failed to fetch") ||
             err.message.includes("NetworkError");
 
         if (isNetworkError) {
-            return {
-                success: true,
-                simulated: true,
-                message: "Password reset link sent (Simulated in offline mode).",
-            };
+            throw new Error(
+                "Unable to reach the server to send reset email. Please try again."
+            );
         }
 
         throw err;
