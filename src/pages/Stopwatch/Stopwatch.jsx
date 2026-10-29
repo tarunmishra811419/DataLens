@@ -13,6 +13,8 @@ import {
     Award,
     Calendar,
     Clock,
+    Zap,
+    Sparkles,
 } from "lucide-react";
 import {
     formatTime,
@@ -53,6 +55,7 @@ function Stopwatch() {
     const [chartRange, setChartRange] = useState(14);
     const [chartTick, setChartTick] = useState(0);
     const [chartType, setChartType] = useState("bar"); // "bar" | "line"
+    const [hoveredIndex, setHoveredIndex] = useState(null);
 
     const days = useMemo(() => {
         if (chartTick < 0) return [];
@@ -159,6 +162,11 @@ function Stopwatch() {
     const activeDays = days.filter((d) => d.seconds > 0).length;
     const avgPerDay = activeDays > 0 ? Math.round(totalTracked / activeDays) : 0;
 
+    const peakDay = useMemo(() => {
+        if (!days || days.length === 0) return null;
+        return days.reduce((best, cur) => (cur.seconds > (best?.seconds || 0) ? cur : best), null);
+    }, [days]);
+
     // ── Streak Calculations ───────────────────────────────────────────────────
     const streakInfo = useMemo(() => {
         const sessions = getAllSessions();
@@ -229,9 +237,11 @@ function Stopwatch() {
         const first = points[0];
         const last = points[points.length - 1];
         const area = `${path} L ${last.x} 200 L ${first.x} 200 Z`;
+        const avgRatio = maxSeconds > 0 ? avgPerDay / maxSeconds : 0;
+        const avgY = 190 - avgRatio * 170;
 
-        return { path, area, points };
-    }, [days, maxSeconds]);
+        return { path, area, points, avgY };
+    }, [days, maxSeconds, avgPerDay]);
 
     // ── Today's ring progress (max = 8 hours) ────────────────────────────────
     const TARGET = 8 * 3600;
@@ -614,10 +624,30 @@ function Stopwatch() {
                 {/* ── Bar / Line Chart ─────────────────────────────────────── */}
                 <section className="sw-chart-card">
                     <div className="sw-chart-header">
-                        <div>
-                            <span className="sw-chart-sub">Daily Distribution</span>
+                        <div className="sw-chart-title-group">
+                            <div className="sw-chart-sub">
+                                <Sparkles size={13} className="sw-chart-sparkle-icon" />
+                                <span>Productivity Pulse</span>
+                            </div>
                             <h2 className="sw-chart-title">Time Tracked per Day</h2>
+                            <div className="sw-chart-meta-chips">
+                                <div className="sw-meta-chip">
+                                    <Clock size={12} className="sw-meta-icon" />
+                                    <span>Total: <strong>{formatShort(totalTracked)}</strong></span>
+                                </div>
+                                <div className="sw-meta-chip">
+                                    <Zap size={12} className="sw-meta-icon sw-meta-icon-zap" />
+                                    <span>Avg: <strong>{formatShort(avgPerDay)}</strong>/day</span>
+                                </div>
+                                {peakDay && peakDay.seconds > 0 && (
+                                    <div className="sw-meta-chip sw-meta-chip-peak">
+                                        <Flame size={12} className="sw-meta-icon sw-meta-icon-flame" />
+                                        <span>Peak: <strong>{formatShort(peakDay.seconds)}</strong> ({peakDay.label})</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
+
                         <div className="sw-chart-header-actions">
                             <div className="sw-chart-type-toggle">
                                 <button
@@ -669,25 +699,52 @@ function Stopwatch() {
 
                             {chartType === "bar" ? (
                                 <div className="sw-bars">
-                                    {days.map((day) => {
+                                    {days.map((day, i) => {
                                         const heightPct =
                                             maxSeconds > 0
                                                 ? (day.seconds / maxSeconds) * 100
                                                 : 0;
                                         const isToday = day.date === getTodayKey();
+                                        const isHovered = hoveredIndex === i;
+                                        const dayObj = new Date(day.date + "T00:00:00");
+                                        const dayName = dayObj.toLocaleDateString("en-US", { weekday: "short" });
+                                        const pctOfGoal = Math.min(Math.round((day.seconds / (8 * 3600)) * 100), 100);
+
                                         return (
                                             <div
                                                 key={day.date}
-                                                className="sw-bar-col"
-                                                title={`${day.label}: ${formatShort(day.seconds)}`}
+                                                className={`sw-bar-col ${isHovered ? "sw-col-hovered" : ""}`}
+                                                onMouseEnter={() => setHoveredIndex(i)}
+                                                onMouseLeave={() => setHoveredIndex(null)}
                                             >
-                                                <div className="sw-bar-tooltip">
-                                                    {formatShort(day.seconds)}
+                                                {/* Modern Rich Floating Tooltip */}
+                                                <div className={`sw-bar-tooltip ${isHovered ? "visible" : ""}`}>
+                                                    <div className="sw-tt-head">
+                                                        <span className="sw-tt-date">{dayName}, {day.label}</span>
+                                                        {isToday && <span className="sw-tt-badge">Today</span>}
+                                                    </div>
+                                                    <div className="sw-tt-val">
+                                                        <Clock size={12} />
+                                                        <strong>{formatShort(day.seconds)}</strong>
+                                                    </div>
+                                                    <div className="sw-tt-footer">
+                                                        {day.seconds > 0 ? (
+                                                            <span>{pctOfGoal}% of 8h goal</span>
+                                                        ) : (
+                                                            <span className="sw-tt-dim">No time logged</span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div
-                                                    className={`sw-bar ${isToday ? "sw-bar-today" : ""} ${day.seconds === 0 ? "sw-bar-empty" : ""}`}
-                                                    style={{ height: `${Math.max(heightPct, day.seconds > 0 ? 2 : 0)}%` }}
-                                                />
+
+                                                {/* Futuristic Slot Track */}
+                                                <div className="sw-bar-track">
+                                                    <div
+                                                        className={`sw-bar ${isToday ? "sw-bar-today" : ""} ${day.seconds === 0 ? "sw-bar-empty" : "sw-bar-active"}`}
+                                                        style={{ height: `${Math.max(heightPct, day.seconds > 0 ? 3 : 0)}%` }}
+                                                    >
+                                                        {day.seconds > 0 && <span className="sw-bar-glow-cap" />}
+                                                    </div>
+                                                </div>
                                             </div>
                                         );
                                     })}
@@ -701,50 +758,126 @@ function Stopwatch() {
                                     >
                                         <defs>
                                             <linearGradient id="swLineGradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.38" />
-                                                <stop offset="70%" stopColor="#2563eb" stopOpacity="0.08" />
-                                                <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.0" />
+                                                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.45" />
+                                                <stop offset="45%" stopColor="#3b82f6" stopOpacity="0.18" />
+                                                <stop offset="85%" stopColor="#1d4ed8" stopOpacity="0.04" />
+                                                <stop offset="100%" stopColor="#1e1b4b" stopOpacity="0.0" />
                                             </linearGradient>
+
+                                            <linearGradient id="swStrokeGradient" x1="0" y1="0" x2="1" y2="0">
+                                                <stop offset="0%" stopColor="#38bdf8" />
+                                                <stop offset="50%" stopColor="#60a5fa" />
+                                                <stop offset="100%" stopColor="#818cf8" />
+                                            </linearGradient>
+
+                                            <filter id="swGlow" x="-20%" y="-20%" width="140%" height="140%">
+                                                <feDropShadow dx="0" dy="2" stdDeviation="3.5" floodColor="#38bdf8" floodOpacity="0.6" />
+                                            </filter>
                                         </defs>
 
                                         {/* Filled area */}
                                         <path d={lineChartData.area} fill="url(#swLineGradient)" />
 
-                                        {/* Smooth Line */}
+                                        {/* Average Benchmark Guide */}
+                                        {lineChartData.avgY > 0 && lineChartData.avgY < 190 && (
+                                            <g className="sw-line-avg-guide">
+                                                <line
+                                                    x1="0"
+                                                    y1={lineChartData.avgY}
+                                                    x2="1000"
+                                                    y2={lineChartData.avgY}
+                                                    stroke="rgba(56, 189, 248, 0.35)"
+                                                    strokeWidth="1.2"
+                                                    strokeDasharray="4 4"
+                                                />
+                                            </g>
+                                        )}
+
+                                        {/* Smooth Glowing Line */}
                                         <path
                                             d={lineChartData.path}
                                             fill="none"
-                                            stroke="#3b82f6"
-                                            strokeWidth="2.5"
+                                            stroke="url(#swStrokeGradient)"
+                                            strokeWidth="3.2"
                                             strokeLinecap="round"
                                             strokeLinejoin="round"
+                                            filter="url(#swGlow)"
                                         />
 
-                                        {/* Points */}
-                                        {lineChartData.points.map((pt) => (
-                                            <circle
-                                                key={pt.day.date}
-                                                cx={pt.x}
-                                                cy={pt.y}
-                                                r={pt.isToday ? 5.5 : pt.day.seconds > 0 ? 4 : 2.5}
-                                                className={`sw-line-dot ${pt.isToday ? "sw-line-dot-today" : ""} ${pt.day.seconds === 0 ? "sw-line-dot-empty" : ""}`}
+                                        {/* Vertical laser guideline on hover */}
+                                        {hoveredIndex !== null && lineChartData.points[hoveredIndex] && (
+                                            <line
+                                                x1={lineChartData.points[hoveredIndex].x}
+                                                y1={190}
+                                                x2={lineChartData.points[hoveredIndex].x}
+                                                y2={lineChartData.points[hoveredIndex].y}
+                                                stroke="#38bdf8"
+                                                strokeWidth="1.5"
+                                                strokeDasharray="3 3"
+                                                className="sw-laser-crosshair"
                                             />
-                                        ))}
+                                        )}
+
+                                        {/* Points with pulse rings */}
+                                        {lineChartData.points.map((pt, i) => {
+                                            const isHovered = hoveredIndex === i;
+                                            return (
+                                                <g key={pt.day.date} className="sw-node-group">
+                                                    {(pt.isToday || isHovered) && pt.day.seconds > 0 && (
+                                                        <circle
+                                                            cx={pt.x}
+                                                            cy={pt.y}
+                                                            r={isHovered ? 12 : 9}
+                                                            className="sw-line-dot-pulse"
+                                                        />
+                                                    )}
+                                                    <circle
+                                                        cx={pt.x}
+                                                        cy={pt.y}
+                                                        r={isHovered ? 6.5 : pt.isToday ? 5.5 : pt.day.seconds > 0 ? 4.5 : 2.5}
+                                                        className={`sw-line-dot ${pt.isToday ? "sw-line-dot-today" : ""} ${pt.day.seconds === 0 ? "sw-line-dot-empty" : "sw-line-dot-active"} ${isHovered ? "sw-line-dot-hovered" : ""}`}
+                                                    />
+                                                </g>
+                                            );
+                                        })}
                                     </svg>
 
-                                    {/* Hover columns with tooltip */}
+                                    {/* Interactive Hover columns with rich tooltip */}
                                     <div className="sw-line-hover-grid">
-                                        {lineChartData.points.map((pt) => (
-                                            <div
-                                                key={pt.day.date}
-                                                className="sw-line-hit-col"
-                                                title={`${pt.day.label}: ${formatShort(pt.day.seconds)}`}
-                                            >
-                                                <div className="sw-bar-tooltip">
-                                                    {formatShort(pt.day.seconds)}
+                                        {lineChartData.points.map((pt, i) => {
+                                            const isToday = pt.day.date === getTodayKey();
+                                            const isHovered = hoveredIndex === i;
+                                            const dayObj = new Date(pt.day.date + "T00:00:00");
+                                            const dayName = dayObj.toLocaleDateString("en-US", { weekday: "short" });
+                                            const pctOfGoal = Math.min(Math.round((pt.day.seconds / (8 * 3600)) * 100), 100);
+
+                                            return (
+                                                <div
+                                                    key={pt.day.date}
+                                                    className="sw-line-hit-col"
+                                                    onMouseEnter={() => setHoveredIndex(i)}
+                                                    onMouseLeave={() => setHoveredIndex(null)}
+                                                >
+                                                    <div className={`sw-bar-tooltip ${isHovered ? "visible" : ""}`}>
+                                                        <div className="sw-tt-head">
+                                                            <span className="sw-tt-date">{dayName}, {pt.day.label}</span>
+                                                            {isToday && <span className="sw-tt-badge">Today</span>}
+                                                        </div>
+                                                        <div className="sw-tt-val">
+                                                            <Clock size={12} />
+                                                            <strong>{formatShort(pt.day.seconds)}</strong>
+                                                        </div>
+                                                        <div className="sw-tt-footer">
+                                                            {pt.day.seconds > 0 ? (
+                                                                <span>{pctOfGoal}% of 8h goal</span>
+                                                            ) : (
+                                                                <span className="sw-tt-dim">No time logged</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -753,14 +886,21 @@ function Stopwatch() {
 
                     {/* X labels */}
                     <div className="sw-x-labels">
-                        {days.map((day) => (
-                            <span
-                                key={day.date}
-                                className={day.date === getTodayKey() ? "sw-x-today" : ""}
-                            >
-                                {day.label}
-                            </span>
-                        ))}
+                        {days.map((day, i) => {
+                            const isToday = day.date === getTodayKey();
+                            const isHovered = hoveredIndex === i;
+                            return (
+                                <span
+                                    key={day.date}
+                                    className={`sw-x-label-item ${isToday ? "sw-x-today" : ""} ${isHovered ? "sw-x-hovered" : ""}`}
+                                    onMouseEnter={() => setHoveredIndex(i)}
+                                    onMouseLeave={() => setHoveredIndex(null)}
+                                >
+                                    <span className="sw-x-label-text">{day.label}</span>
+                                    {isToday && <span className="sw-x-today-dot" />}
+                                </span>
+                            );
+                        })}
                     </div>
                 </section>
             </main>
