@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
     Mail,
     Lock,
@@ -15,7 +15,7 @@ import {
     RefreshCw,
 } from "lucide-react";
 import { validateLoginForm } from "../../utils/validators";
-import { loginUser, loginVerifyOtp, resendLoginOtp } from "../../services/authService";
+import { getAuthSession, loginUser, loginVerifyOtp, resendLoginOtp } from "../../services/authService";
 import { signInWithGoogle } from "../../services/googleAuthService";
 import "./Login.css";
 
@@ -292,6 +292,16 @@ function OtpVerificationStep({
 // ─── Main Login Component ────────────────────────────────────────
 function Login() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const redirectPath = location.state?.from?.pathname || "/dashboard";
+
+    // Auto-redirect if already logged in
+    useEffect(() => {
+        const session = getAuthSession();
+        if (session?.token) {
+            navigate(redirectPath, { replace: true });
+        }
+    }, [navigate, redirectPath]);
 
     // Step: "credentials" or "otp"
     const [step, setStep] = useState("credentials");
@@ -320,10 +330,10 @@ function Login() {
             if (result.success) {
                 setStatusMessage({
                     type: "success",
-                    text: result.notice || "Signed in with Google! Redirecting to dashboard...",
+                    text: result.notice || "Signed in with Google! Redirecting...",
                 });
                 setTimeout(() => {
-                    navigate("/dashboard");
+                    navigate(redirectPath, { replace: true });
                 }, 900);
             }
         } catch (err) {
@@ -376,10 +386,10 @@ function Login() {
                 } else if (result.token) {
                     setStatusMessage({
                         type: "success",
-                        text: result.notice || "Welcome back! Redirecting to your dashboard...",
+                        text: result.notice || "Welcome back! Redirecting...",
                     });
                     setTimeout(() => {
-                        navigate("/dashboard");
+                        navigate(redirectPath, { replace: true });
                     }, 900);
                 } else {
                     throw new Error("Unable to complete login. Please verify credentials.");
@@ -397,7 +407,7 @@ function Login() {
 
     const handleOtpVerified = () => {
         setTimeout(() => {
-            navigate("/dashboard");
+            navigate(redirectPath, { replace: true });
         }, 800);
     };
 

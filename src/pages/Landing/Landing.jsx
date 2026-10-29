@@ -1,7 +1,14 @@
 import { Link } from "react-router-dom";
+import { getAuthSession } from "../../services/authService";
 import "./Landing.css";
 
 export default function Landing() {
+    const session = getAuthSession();
+    const isLoggedIn = !!session?.token;
+
+    const authLink = (to) => (isLoggedIn ? to : "/login");
+    const authState = (to) => (isLoggedIn ? undefined : { from: { pathname: to } });
+
     return (
         <div className="landing-page">
             {/* Navbar */}
@@ -14,13 +21,27 @@ export default function Landing() {
                 <div className="nav-links">
                     <a href="#features">Features</a>
                     <a href="#how-it-works">Workflow</a>
-                    <Link to="/dashboard">Dashboard</Link>
+                    <Link to={authLink("/dashboard")} state={authState("/dashboard")}>
+                        Dashboard
+                    </Link>
                     <Link to="/privacy">Privacy</Link>
                 </div>
 
                 <div className="nav-actions">
-                    <Link to="/login" className="btn btn-secondary">Sign In</Link>
-                    <Link to="/register" className="btn btn-primary">Create Account</Link>
+                    {isLoggedIn ? (
+                        <Link to="/dashboard" className="btn btn-primary">
+                            Open Dashboard
+                        </Link>
+                    ) : (
+                        <>
+                            <Link to="/login" className="btn btn-secondary">
+                                Sign In
+                            </Link>
+                            <Link to="/register" className="btn btn-primary">
+                                Create Account
+                            </Link>
+                        </>
+                    )}
                 </div>
             </nav>
 
@@ -46,11 +67,19 @@ export default function Landing() {
                         </p>
 
                         <div className="hero-actions">
-                            <Link to="/dataset/create" className="btn btn-primary hero-button">
+                            <Link
+                                to={authLink("/dataset/create")}
+                                state={authState("/dataset/create")}
+                                className="btn btn-primary hero-button"
+                            >
                                 Create Dataset
                             </Link>
-                            <Link to="/dashboard" className="btn btn-secondary hero-button">
-                                Open Workspace
+                            <Link
+                                to={authLink("/dashboard")}
+                                state={authState("/dashboard")}
+                                className="btn btn-secondary hero-button"
+                            >
+                                {isLoggedIn ? "Open Workspace" : "Sign In to Workspace"}
                             </Link>
                         </div>
 
@@ -250,17 +279,26 @@ export default function Landing() {
                     <div className="footer-links-group">
                         <div className="footer-col">
                             <h4>Product</h4>
-                            <Link to="/dashboard">Dashboard</Link>
-                            <Link to="/dataset/create">New Dataset</Link>
-                            <Link to="/visualize">Visualize</Link>
-                            <Link to="/stopwatch">Time Tracker</Link>
+                            <Link to={authLink("/dashboard")} state={authState("/dashboard")}>Dashboard</Link>
+                            <Link to={authLink("/dataset/create")} state={authState("/dataset/create")}>New Dataset</Link>
+                            <Link to={authLink("/visualize")} state={authState("/visualize")}>Visualize</Link>
+                            <Link to={authLink("/stopwatch")} state={authState("/stopwatch")}>Time Tracker</Link>
                         </div>
 
                         <div className="footer-col">
                             <h4>Account</h4>
-                            <Link to="/login">Sign In</Link>
-                            <Link to="/register">Register</Link>
-                            <Link to="/profile">Profile Settings</Link>
+                            {isLoggedIn ? (
+                                <>
+                                    <Link to="/dashboard">Dashboard</Link>
+                                    <Link to="/profile">Profile Settings</Link>
+                                </>
+                            ) : (
+                                <>
+                                    <Link to="/login">Sign In</Link>
+                                    <Link to="/register">Register</Link>
+                                    <Link to="/login" state={{ from: { pathname: "/profile" } }}>Profile Settings</Link>
+                                </>
+                            )}
                         </div>
 
                         <div className="footer-col">

@@ -15,6 +15,7 @@ import Profile from "../pages/Profile/Profile";
 import Stopwatch from "../pages/Stopwatch/Stopwatch";
 import PrivacyPolicy from "../pages/Legal/PrivacyPolicy";
 import TermsConditions from "../pages/Legal/TermsConditions";
+import ProtectedRoute from "../components/common/ProtectedRoute";
 
 function AppRoutes() {
     return (
@@ -28,41 +29,95 @@ function AppRoutes() {
                 element={<ForgotPassword />}
             />
 
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route
+                path="/dashboard"
+                element={
+                    <ProtectedRoute>
+                        <Dashboard />
+                    </ProtectedRoute>
+                }
+            />
 
             <Route
                 path="/dataset/create"
-                element={<CreateDataset />}
+                element={
+                    <ProtectedRoute>
+                        <CreateDataset />
+                    </ProtectedRoute>
+                }
             />
 
             <Route
                 path="/dataset/manual"
-                element={<ManualDataset />}
+                element={
+                    <ProtectedRoute>
+                        <ManualDataset />
+                    </ProtectedRoute>
+                }
             />
 
             <Route
                 path="/dataset/enter"
-                element={<ManualDataset />}
+                element={
+                    <ProtectedRoute>
+                        <ManualDataset />
+                    </ProtectedRoute>
+                }
             />
 
             <Route
                 path="/dataset/upload"
-                element={<UploadDataset />}
+                element={
+                    <ProtectedRoute>
+                        <UploadDataset />
+                    </ProtectedRoute>
+                }
             />
 
             <Route
                 path="/dataset/preview"
-                element={<DataPreview />}
+                element={
+                    <ProtectedRoute>
+                        <DataPreview />
+                    </ProtectedRoute>
+                }
             />
 
             <Route
                 path="/visualize"
-                element={<Visualize />}
+                element={
+                    <ProtectedRoute>
+                        <Visualize />
+                    </ProtectedRoute>
+                }
             />
 
-            <Route path="/compare" element={<CompareDatasets />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/stopwatch" element={<Stopwatch />} />
+            <Route
+                path="/compare"
+                element={
+                    <ProtectedRoute>
+                        <CompareDatasets />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/profile"
+                element={
+                    <ProtectedRoute>
+                        <Profile />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/stopwatch"
+                element={
+                    <ProtectedRoute>
+                        <Stopwatch />
+                    </ProtectedRoute>
+                }
+            />
 
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsConditions />} />
